@@ -108,12 +108,18 @@ public:
 
     void setBrush();
 
+    virtual void addHyperlink(const QRectF &r, const QUrl &url);
+    virtual void addAnchor(const QRectF &r, const QString &name);
+    virtual void addLink(const QRectF &r, const QString &anchor);
+
     // ### unused, should have something for this in QPrintEngine
     void setAuthor(const QString &author);
     QString author() const;
 
     void setDevice(QIODevice* dev);
 
+    void beginSectionOutline(const QString &text, const QString &anchor);
+    void endSectionOutline();
 private:
     Q_DISABLE_COPY(QPdfEngine)
 
@@ -124,6 +130,35 @@ class QPdfEnginePrivate : public QPdfBaseEnginePrivate
 {
     Q_DECLARE_PUBLIC(QPdfEngine)
 public:
+  
+    class OutlineItem {
+    public:
+        OutlineItem *parent;
+        OutlineItem *next;
+        OutlineItem *prev;
+        OutlineItem *firstChild;
+        OutlineItem *lastChild;
+        uint obj;
+        QString text;
+        QString anchor;
+        
+        OutlineItem(const QString &t, const QString &a): 
+            parent(NULL), next(NULL), prev(NULL), firstChild(NULL), lastChild(NULL),
+            obj(0), text(t), anchor(a) {}
+        ~OutlineItem() {
+            OutlineItem *i = firstChild;
+            while(i != NULL) { 
+                OutlineItem *n = i->next;
+                delete i;
+                i=n;
+            }
+        }
+    };
+    
+    OutlineItem *outlineRoot;
+    OutlineItem *outlineCurrent;
+    void writeOutlineChildren(OutlineItem *node);
+    
     QPdfEnginePrivate(QPrinter::PrinterMode m);
     ~QPdfEnginePrivate();
 
@@ -170,7 +205,10 @@ private:
     void writePage();
 
     int addXrefEntry(int object, bool printostr = true);
+
     void printString(const QString &string);
+    void printAnchor(const QString &name);
+    
     void xprintf(const char* fmt, ...);
     inline void write(const QByteArray &data) {
         stream->writeRawData(data.constData(), data.size());
@@ -183,6 +221,8 @@ private:
 
     // various PDF objects
     int pageRoot, catalog, info, graphicsState, patternColorSpace;
+    QVector<uint> dests;
+    QHash<QString, uint> anchors;
     QVector<uint> pages;
     QHash<qint64, uint> imageCache;
     QHash<QPair<uint, uint>, uint > alphaCache;
