@@ -162,6 +162,10 @@ public:
     virtual void drawRects(const QRect *rects, int rectCount);
     virtual void drawRects(const QRectF *rects, int rectCount);
 
+    virtual void addHyperlink(const QRectF &r, const QUrl &url) {Q_UNUSED(r); Q_UNUSED(url);}
+    virtual void addAnchor(const QRectF &r, const QString &name) {Q_UNUSED(r); Q_UNUSED(name);}
+    virtual void addLink(const QRectF &r, const QString &anchor) {Q_UNUSED(r); Q_UNUSED(anchor);}
+
     virtual void drawLines(const QLine *lines, int lineCount);
     virtual void drawLines(const QLineF *lines, int lineCount);
 
