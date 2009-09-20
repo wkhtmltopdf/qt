@@ -51,6 +51,7 @@
 #include <qimagewriter.h>
 #include <qbuffer.h>
 #include <qdatetime.h>
+#include <QCryptographicHash>
 
 #ifndef QT_NO_PRINTER
 #include <limits.h>
@@ -156,6 +157,41 @@ bool QPdfEngine::begin(QPaintDevice *pdev)
 bool QPdfEngine::end()
 {
     Q_D(QPdfEngine);
+	
+    uint dests;
+    if (d->anchors.size()) {
+        dests = d->addXrefEntry(-1);
+        d->xprintf("<<\n");
+        for (QHash<QString, uint>::iterator i=d->anchors.begin();
+             i != d->anchors.end(); ++i) {
+            d->printAnchor(i.key());
+            d->xprintf(" %d 0 R\n", i.value());
+        }
+        d->xprintf(">>\n");
+    }	
+
+    if (d->outlineRoot) {
+        d->outlineRoot->obj = d->requestObject();
+        d->writeOutlineChildren(d->outlineRoot);
+        d->addXrefEntry(d->outlineRoot->obj);
+        d->xprintf("<</Type /Outlines /First %d 0 R\n/Last %d 0 R>>\nendobj\n",
+                   d->outlineRoot->firstChild->obj, d->outlineRoot->lastChild->obj);
+    }
+    
+    d->catalog = d->addXrefEntry(-1);
+    d->xprintf("<<\n"
+               "/Type /Catalog\n"
+               "/Pages %d 0 R\n", d->pageRoot);
+    if (d->outlineRoot)
+        d->xprintf("/Outlines %d 0 R\n"
+                   "/PageMode /UseOutlines\n", d->outlineRoot->obj);
+
+    if (d->anchors.size())
+        d->xprintf("/Dests %d 0 R\n", dests);
+
+    d->xprintf(">>\n"
+               "endobj\n");
+
     d->writeTail();
 
     d->stream->unsetDevice();
@@ -305,14 +341,62 @@ QPdfEnginePrivate::QPdfEnginePrivate(QPrinter::PrinterMode m)
     stream = new QDataStream;
     pageOrder = QPrinter::FirstPageFirst;
     orientation = QPrinter::Portrait;
+    outlineRoot = NULL;
+    outlineCurrent = NULL;
     fullPage = false;
 }
 
 QPdfEnginePrivate::~QPdfEnginePrivate()
 {
+    if (outlineRoot)
+      delete outlineRoot;
     delete stream;
 }
 
+void QPdfEnginePrivate::printAnchor(const QString &name) {
+    QByteArray a = name.toUtf8();
+    if (a.size() >= 127)
+        a = QCryptographicHash::hash(a,QCryptographicHash::Sha1);
+    xprintf("/");
+    for (int i=0; i < a.size(); ++i) {
+        unsigned char c = a[i];
+        if (('a' <= c && c <= 'z') ||
+            ('A' <= c && c <= 'Z') ||
+            ('0' <= c && c <= '9') ||
+            c == '.' || c == '_') 
+            xprintf("%c", c);
+        else if(c == 0)
+            xprintf("!");
+        else
+            xprintf("#%02x", c);
+    }
+}
+
+void QPdfEnginePrivate::writeOutlineChildren(OutlineItem * node) {
+    for (OutlineItem * i = node->firstChild; i != NULL; i = i->next)
+       i->obj = requestObject();
+    for (OutlineItem * i = node->firstChild; i != NULL; i = i->next) {
+       QPdfEnginePrivate::writeOutlineChildren(i);
+       addXrefEntry(i->obj);
+       xprintf("<</Title ");
+       printString(i->text);
+       xprintf("\n"
+               "  /Parent %d 0 R\n"
+               "  /Dest ", i->parent->obj);
+       printAnchor(i->anchor);
+       xprintf("\n  /Count 0\n");
+       if (i->next)
+           xprintf("  /Next %d 0 R\n", i->next->obj);
+       if (i->prev)
+           xprintf("  /Prev %d 0 R\n", i->prev->obj);
+       if (i->firstChild)
+           xprintf("  /First %d 0 R\n", i->firstChild->obj);
+       if (i->lastChild)
+           xprintf("  /Last %d 0 R\n", i->lastChild->obj);
+       xprintf(">>\n"
+               "endobj\n");
+    }
+}
 
 #ifdef USE_NATIVE_GRADIENTS
 int QPdfEnginePrivate::gradientBrush(const QBrush &b, const QMatrix &matrix, int *gStateObject)
@@ -908,13 +992,7 @@ void QPdfEnginePrivate::writeHeader()
 
     writeInfo();
 
-    catalog = addXrefEntry(-1);
     pageRoot = requestObject();
-    xprintf("<<\n"
-            "/Type /Catalog\n"
-            "/Pages %d 0 R\n"
-            ">>\n"
-            "endobj\n", pageRoot);
 
     // graphics state
     graphicsState = addXrefEntry(-1);
@@ -1099,6 +1177,101 @@ void QPdfEnginePrivate::writeFonts()
         delete *it;
     }
     fonts.clear();
+}
+
+
+void QPdfEngine::addHyperlink(const QRectF &r, const QUrl &url)
+{
+    Q_D(QPdfEngine);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    uint annot = d->addXrefEntry(-1);
+    QByteArray urlascii = url.toString().toLatin1();
+    int len = urlascii.size();
+    char *url_esc = new char[len * 2 + 1];
+    const char * urldata = urlascii.constData();
+    int k = 0;
+    for (int j = 0; j < len; j++, k++){
+        if (urldata[j] == '(' ||
+            urldata[j] == ')' ||
+            urldata[j] == '\\'){
+            url_esc[k] = '\\';
+            k++;
+        }
+        url_esc[k] = urldata[j];
+    }
+    url_esc[k] = 0;
+    d->xprintf("<<\n/Type /Annot\n/Subtype /Link\n/Rect [");
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]\n/Border [0 0 0]\n/A <<\n");
+    d->xprintf("/Type /Action\n/S /URI\n/URI (%s)\n", url_esc);
+    d->xprintf(">>\n>>\n");
+    d->xprintf("endobj\n");
+    d->currentPage->annotations.append(annot);
+    delete[] url_esc;
+}
+
+void QPdfEngine::addLink(const QRectF &r, const QString &anchor)
+{
+    Q_D(QPdfEngine);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    uint annot = d->addXrefEntry(-1);
+    d->xprintf("<<\n/Type /Annot\n/Subtype /Link\n/Rect [");
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]\n/Border [0 0 0]\n/Dest ");
+    d->printAnchor(anchor);
+    d->xprintf("\n>>\n");
+    d->xprintf("endobj\n");
+    d->currentPage->annotations.append(annot);
+}
+
+void QPdfEngine::addAnchor(const QRectF &r, const QString &name)
+{
+    Q_D(QPdfEngine);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    uint anchor = d->addXrefEntry(-1);
+    d->xprintf("[%d /XYZ %s \n",
+               d->pages.size() - 1,
+               qt_real_to_string(rr.left(), buf));
+    d->xprintf("%s 0]\n",
+               qt_real_to_string(rr.bottom(), buf));
+    d->xprintf("endobj\n");
+    d->anchors[name] = anchor;
+}
+
+void QPdfEngine::beginSectionOutline(const QString &text, const QString &anchor)
+{
+    Q_D(QPdfEngine);
+    if (d->outlineCurrent == NULL) {
+        if (d->outlineRoot)
+            delete d->outlineRoot;
+        d->outlineCurrent = d->outlineRoot = new QPdfEnginePrivate::OutlineItem(QString(), QString());
+    }
+    
+    QPdfEnginePrivate::OutlineItem *i = new QPdfEnginePrivate::OutlineItem(text, anchor);
+    i->parent = d->outlineCurrent;
+    i->prev = d->outlineCurrent->lastChild;
+    if (d->outlineCurrent->firstChild)
+        d->outlineCurrent->lastChild->next = i;
+    else
+        d->outlineCurrent->firstChild = i;
+    d->outlineCurrent->lastChild = i;
+    d->outlineCurrent = i;
+}
+
+void QPdfEngine::endSectionOutline()
+{
+    Q_D(QPdfEngine);
+    if (d->outlineCurrent)
+        d->outlineCurrent = d->outlineCurrent->parent;
 }
 
 void QPdfEnginePrivate::writePage()
