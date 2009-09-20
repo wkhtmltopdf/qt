@@ -1674,6 +1674,14 @@ void RenderBlock::paintChildren(PaintInfo& paintInfo, int tx, int ty)
             return;
         }
 
+        // Check for page-break-inside: avaid and child wont fit, break and bail.
+        if (isPrinting && !childrenInline() && child->style()->pageBreakInside() == PBAVOID
+            && (ty + child->y()) > paintInfo.rect.y()
+            && (ty + child->y()) < paintInfo.rect.bottom()
+            && (ty + child->y() + child->height()) > paintInfo.rect.bottom()) {
+            view()->setBestTruncatedAt(ty + child->y(), this);
+        }
+ 
         if (!child->hasSelfPaintingLayer() && !child->isFloating())
             child->paint(info, tx, ty);
 
