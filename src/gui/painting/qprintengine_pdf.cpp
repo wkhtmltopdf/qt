@@ -78,12 +78,6 @@ extern qint64 qt_image_id(const QImage &image);
 // Can't use it though, as gs generates completely wrong images if this is true.
 static const bool interpolateImages = false;
 
-#ifdef QT_NO_COMPRESS
-static const bool do_compress = false;
-#else
-static const bool do_compress = true;
-#endif
-
 QPdfPage::QPdfPage()
     : QPdf::ByteStream(true) // Enable file backing
 {
@@ -108,6 +102,22 @@ inline QPaintEngine::PaintEngineFeatures qt_pdf_decide_features()
            | QPaintEngine::RadialGradientFill
            | QPaintEngine::ConicalGradientFill);
     return f;
+}
+
+void QPdfEngine::setProperty(PrintEnginePropertyKey key, const QVariant &value) {
+    Q_D(QPdfEngine);
+    if (key==PKK_UseCompression)
+        d->doCompress = value.toBool();
+    else 
+        QPdfBaseEngine::setProperty(key, value);
+}
+
+QVariant QPdfEngine::property(PrintEnginePropertyKey key) const {
+    Q_D(const QPdfEngine);
+    if (key==PKK_UseCompression)
+        return d->doCompress;
+    else
+        return QPdfBaseEngine::property(key);
 }
 
 QPdfEngine::QPdfEngine(QPrinter::PrinterMode m)
@@ -337,7 +347,7 @@ QPdfEnginePrivate::QPdfEnginePrivate(QPrinter::PrinterMode m)
     : QPdfBaseEnginePrivate(m)
 {
     streampos = 0;
-
+    doCompress = true;
     stream = new QDataStream;
     pageOrder = QPrinter::FirstPageFirst;
     orientation = QPrinter::Portrait;
@@ -842,7 +852,7 @@ void QPdfEnginePrivate::xprintf(const char* fmt, ...)
 int QPdfEnginePrivate::writeCompressed(QIODevice *dev)
 {
 #ifndef QT_NO_COMPRESS
-    if (do_compress) {
+    if (doCompress) {
         int size = QPdfPage::chunkSize();
         int sum = 0;
         ::z_stream zStruct;
@@ -916,7 +926,7 @@ int QPdfEnginePrivate::writeCompressed(QIODevice *dev)
 int QPdfEnginePrivate::writeCompressed(const char *src, int len)
 {
 #ifndef QT_NO_COMPRESS
-    if(do_compress) {
+    if(doCompress) {
         uLongf destLen = len + len/100 + 13; // zlib requirement
         Bytef* dest = new Bytef[destLen];
         if (Z_OK == ::compress(dest, &destLen, (const Bytef*) src, (uLongf)len)) {
@@ -969,7 +979,7 @@ int QPdfEnginePrivate::writeImage(const QByteArray &data, int width, int height,
         write(data);
         len = data.length();
     } else {
-        if (do_compress)
+        if (doCompress)
             xprintf("/Filter /FlateDecode\n>>\nstream\n");
         else
             xprintf(">>\nstream\n");
@@ -1126,7 +1136,7 @@ void QPdfEnginePrivate::embedFont(QFontSubset *font)
         s << "<<\n"
             "/Length1 " << fontData.size() << "\n"
             "/Length " << length_object << "0 R\n";
-        if (do_compress)
+        if (doCompress)
             s << "/Filter /FlateDecode\n";
         s << ">>\n"
             "stream\n";
@@ -1353,7 +1363,7 @@ void QPdfEnginePrivate::writePage()
     addXrefEntry(pageStream);
     xprintf("<<\n"
             "/Length %d 0 R\n", pageStreamLength); // object number for stream length object
-    if (do_compress)
+    if (doCompress)
         xprintf("/Filter /FlateDecode\n");
 
     xprintf(">>\n");
