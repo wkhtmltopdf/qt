@@ -90,6 +90,8 @@ public:
         PPK_SupportsMultipleCopies,
         PPK_PaperSize = PPK_PageSize,
 
+        PKK_UseCompression,
+
         PPK_CustomBase = 0xff00
     };
 
