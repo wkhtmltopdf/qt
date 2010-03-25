@@ -120,6 +120,9 @@ public:
 
     void beginSectionOutline(const QString &text, const QString &anchor);
     void endSectionOutline();
+
+    void setProperty(PrintEnginePropertyKey key, const QVariant &value);
+    QVariant property(PrintEnginePropertyKey key) const;
 private:
     Q_DISABLE_COPY(QPdfEngine)
 
@@ -199,6 +202,7 @@ private:
     QVector<int> xrefPositions;
     QDataStream* stream;
     int streampos;
+    bool doCompress;
 
     int writeImage(const QByteArray &data, int width, int height, int depth,
                    int maskObject, int softMaskObject, bool dct = false);
