@@ -111,6 +111,8 @@ public:
     virtual void addHyperlink(const QRectF &r, const QUrl &url);
     virtual void addAnchor(const QRectF &r, const QString &name);
     virtual void addLink(const QRectF &r, const QString &anchor);
+    virtual void addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength);
+    virtual void addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly);
 
     // ### unused, should have something for this in QPrintEngine
     void setAuthor(const QString &author);
@@ -199,6 +201,8 @@ private:
     void writeFonts();
     void embedFont(QFontSubset *font);
 
+    int formFieldList;
+    QVector<uint> formFields;
     QVector<int> xrefPositions;
     QDataStream* stream;
     int streampos;
