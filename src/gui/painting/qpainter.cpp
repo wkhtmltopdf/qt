@@ -7420,6 +7420,34 @@ void QPainter::addHyperlink(const QRectF &r, const QUrl &url)
     d->engine->addHyperlink(worldTransform().mapRect(r), url);
 }
 
+void QPainter::addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addTextField: Painter not active");
+        return;
+    }
+    d->engine->addTextField(worldTransform().mapRect(r), text, name, multiLine, password, readOnly, maxLength);
+}
+
+void QPainter::addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addCheckBox: Painter not active");
+        return;
+    }
+    d->engine->addCheckBox(worldTransform().mapRect(r), checked, name, readOnly);
+}
+
+
+void QPainter::addRadioButton(const QRectF &r, const QString & group, bool checked, const QString &name, bool readOnly) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addRadioButton: Painter not active");
+        return;
+    }
+    d->engine->addRadioButton(worldTransform().mapRect(r), group, checked, name, readOnly);
+}
+
 /*!
     Sets the given render \a hint on the painter if \a on is true;
     otherwise clears the render hint.
