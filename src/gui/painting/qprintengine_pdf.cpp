@@ -176,6 +176,21 @@ bool QPdfEngine::end()
                    d->outlineRoot->firstChild->obj, d->outlineRoot->lastChild->obj);
     }
     
+    if (d->formFields.size()) {
+        uint font = d->addXrefEntry(-1);
+        d->xprintf("<</Type/Font/Name/Helv/BaseFont/Helvetica/Subtype/Type1>>\n"
+                   "endobj\n");
+        d->addXrefEntry(d->formFieldList);
+        d->xprintf("<</Fields[");
+        foreach(const uint & i, d->formFields)
+           d->xprintf("%d 0 R ",i);
+        d->xprintf("]\n"
+                   "/DR<</Font<</Helv %d 0 R>>>>\n"
+                   "/DA(/Helv 0 Tf 0 g)\n"
+                   ">>\n"
+                   "endobj\n", font);
+    }
+
     d->catalog = d->addXrefEntry(-1);
     d->xprintf("<<\n"
                "/Type /Catalog\n"
@@ -183,6 +198,8 @@ bool QPdfEngine::end()
     if (d->outlineRoot)
         d->xprintf("/Outlines %d 0 R\n"
                    "/PageMode /UseOutlines\n", d->outlineRoot->obj);
+    if (d->formFields.size()) 
+        d->xprintf("/AcroForm %d 0 R\n", d->formFieldList);
     if (d->anchors.size()) {
         d->xprintf("/Dests <<\n");
         for (QHash<QString, uint>::iterator i=d->anchors.begin();
@@ -204,6 +221,46 @@ bool QPdfEngine::end()
     return true;
 }
 
+void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength)
+{
+    Q_D(QPdfEngine);
+    uint obj = d->addXrefEntry(-1);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    d->xprintf("<<\n"
+               "/Type /Annot\n"
+               "/Parrent %d 0 R\n"
+               "/Rect[", d->formFieldList);
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]\n"
+               "/BS<</S/I>>\n"
+               "/FT/Tx\n"
+               "/Subtype/Widget\n"
+               "/P %d 0 R\n", d->pages.back());
+    if (!text.isEmpty()) {
+        d->xprintf("/V");
+        d->printString(text);
+        d->xprintf("\n");
+    }
+    if (!name.isEmpty()) {
+        d->xprintf("/T");
+        d->printString(name);
+        d->xprintf("\n");
+    }
+    if (maxLength >= 0) 
+        d->xprintf("/MaxLen %d\n",maxLength);
+    d->xprintf("/DA(/Helv 12 Tf 0 g)\n"
+               "/Ff %d\n"
+               ">>\n"
+               "endobj\n",
+               (readOnly?1:0)<<0 | (password?1:0)<<13 | (multiLine?1:0)<<12
+        );
+    d->currentPage->annotations.push_back(obj);
+    d->formFields.push_back(obj);
+}
 
 void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, const QRectF &sr)
 {
@@ -987,7 +1044,7 @@ void QPdfEnginePrivate::writeHeader()
     writeInfo();
 
     pageRoot = requestObject();
-
+    formFieldList = requestObject();
     // graphics state
     graphicsState = addXrefEntry(-1);
     xprintf("<<\n"
