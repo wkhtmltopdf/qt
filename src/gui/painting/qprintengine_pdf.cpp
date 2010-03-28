@@ -221,6 +221,39 @@ bool QPdfEngine::end()
     return true;
 }
 
+void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly) {
+    Q_D(QPdfEngine);
+    uint obj = d->addXrefEntry(-1);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    //Note that the pdf spec sayes that we should add some sort of default appearence atleast for yes, which we dont ghost script provides one, however acroread does not
+    d->xprintf("<<\n"
+               "/Type /Annot\n"
+               "/Parrent %d 0 R\n"
+               "/Rect[", d->formFieldList);
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]\n"
+               "/FT/Btn\n"
+               "/Subtype/Widget\n"
+               "/P %d 0 R\n", d->pages.back());
+    if (checked)
+        d->xprintf("/AS /Yes\n");
+    if (!name.isEmpty()) {
+        d->xprintf("/T");
+        d->printString(name);
+        d->xprintf("\n");
+    }
+    d->xprintf("/Ff %d\n"
+               ">>\n"
+               "endobj\n",
+               (readOnly?1:0)<<0);
+    d->currentPage->annotations.push_back(obj);
+    d->formFields.push_back(obj);
+}
+
 void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength)
 {
     Q_D(QPdfEngine);

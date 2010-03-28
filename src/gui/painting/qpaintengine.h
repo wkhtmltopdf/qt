@@ -168,7 +168,9 @@ public:
     virtual void addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength) {
         Q_UNUSED(r); Q_UNUSED(text); Q_UNUSED(name); Q_UNUSED(multiLine); Q_UNUSED(password); Q_UNUSED(readOnly); Q_UNUSED(maxLength);
     }
-
+    virtual void addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly) {
+        Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly);
+    }
     virtual void drawLines(const QLine *lines, int lineCount);
     virtual void drawLines(const QLineF *lines, int lineCount);
 
