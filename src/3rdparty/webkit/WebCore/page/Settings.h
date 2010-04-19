@@ -296,6 +296,11 @@ namespace WebCore {
         
         void setTiledBackingStoreEnabled(bool);
         bool tiledBackingStoreEnabled() const { return m_tiledBackingStoreEnabled; }
+        void setPrintingMinimumShrinkFactor(float);
+        float printingMinimumShrinkFactor() const { return m_printingMinimumShrinkFactor; }
+	
+        void setPrintingMaximumShrinkFactor(float);
+        float printingMaximumShrinkFactor() const { return m_printingMaximumShrinkFactor; }
 
     private:
         Page* m_page;
@@ -312,6 +317,8 @@ namespace WebCore {
         AtomicString m_fantasyFontFamily;
         EditableLinkBehavior m_editableLinkBehavior;
         TextDirectionSubmenuInclusionBehavior m_textDirectionSubmenuInclusionBehavior;
+        float m_printingMinimumShrinkFactor;
+        float m_printingMaximumShrinkFactor;
         int m_minimumFontSize;
         int m_minimumLogicalFontSize;
         int m_defaultFontSize;
