@@ -45,6 +45,7 @@
 #include "qwebframe_p.h"
 #include "qwebpage.h"
 
+#include <QApplication>
 #include <QCoreApplication>
 #include <QPainter>
 #include <QPaintEngine>
@@ -82,6 +83,8 @@ void Widget::setFocus()
 void Widget::setCursor(const Cursor& cursor)
 {
 #ifndef QT_NO_CURSOR
+    if (QApplication::type() == QApplication::Tty)
+        return;
     QWebPageClient* pageClient = root()->hostWindow()->platformPageClient();
 
     if (pageClient)

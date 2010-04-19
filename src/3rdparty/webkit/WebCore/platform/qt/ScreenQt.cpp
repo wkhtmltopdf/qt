@@ -54,6 +54,8 @@ static QWidget* qwidgetForPage(const Page* page)
 
 FloatRect screenRect(const Page* page)
 {
+    if (QApplication::type() == QApplication::Tty)
+        return FloatRect(0,0,800,600);
     QWidget* qw = qwidgetForPage(page);
     if (!qw)
         return FloatRect();
@@ -68,6 +70,8 @@ FloatRect screenRect(const Page* page)
 
 int screenDepth(const Page* page)
 {
+    if (QApplication::type() == QApplication::Tty)
+        return 32;
     QWidget* qw = qwidgetForPage(page);
     if (!qw)
         return 32;
@@ -77,6 +81,8 @@ int screenDepth(const Page* page)
 
 FloatRect usableScreenRect(const Page* page)
 {
+    if (QApplication::type() == QApplication::Tty)
+        return FloatRect();
     QWidget* qw = qwidgetForPage(page);
     if (!qw)
         return FloatRect();
