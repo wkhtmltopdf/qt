@@ -112,7 +112,7 @@ QUrl XSLTUriResolver::resolve(const QUrl& relative, const QUrl& baseURI) const
     return url;
 }
 
-bool XSLTProcessor::transformToString(Node* sourceNode, String&, String& resultString, String&)
+bool XSLTProcessor::transformToString(Node* sourceNode, String& mime, String& resultString, String& encoding)
 {
     bool success = false;
 
@@ -163,9 +163,14 @@ bool XSLTProcessor::transformToString(Node* sourceNode, String&, String& resultS
 
     query.setUriResolver(&uriResolver);
 
+    outputBuffer.write("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+                                "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n");
+
     success = query.evaluateTo(&outputBuffer);
     outputBuffer.reset();
     resultString = QString::fromUtf8(outputBuffer.readAll()).trimmed();
+    mime = "application/xhtml+xml";
+    encoding = "utf-8";
 
     if (m_stylesheet) {
         m_stylesheet->clearDocuments();
