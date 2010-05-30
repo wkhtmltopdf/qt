@@ -168,7 +168,12 @@ bool XSLTProcessor::transformToString(Node* sourceNode, String& mime, String& re
 
     success = query.evaluateTo(&outputBuffer);
     outputBuffer.reset();
-    resultString = QString::fromUtf8(outputBuffer.readAll()).trimmed();
+    QString x = QString::fromUtf8(outputBuffer.readAll());
+    x.replace("xmlns:ns0=\"http://www.w3.org/1999/xhtml\"","");
+    x.replace(" ns0:", " ");
+    resultString = x.trimmed();
+    
+
     mime = "application/xhtml+xml";
     encoding = "utf-8";
 
