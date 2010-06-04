@@ -443,11 +443,12 @@ QPair<int, QRectF> QWebPrinter::elementLocation(const QWebElement & e)
     
     int low=0;
     int high=pageRects.size();
+    int c = r.y() + r.height() / 2;
     while(low <= high) {
 	int m = (low+high)/2;
-	if(r.y() < pageRects[m].y())
+	if(c < pageRects[m].y())
 	    high = m-1;
-	else if(r.y() > pageRects[m].bottom())
+	else if(c > pageRects[m].bottom())
 	    low = m +1;
 	else {
 	  QRectF tr = r.translated(0, -pageRects[m].y());
