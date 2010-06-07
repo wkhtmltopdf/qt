@@ -143,6 +143,7 @@ RenderThemeQt::RenderThemeQt(Page* page)
     : RenderTheme()
     , m_page(page)
     , m_lineEdit(0)
+    , m_fallbackStyle(0)
 {
     if (QApplication::type() != QApplication::Tty) {
         QPushButton button;
