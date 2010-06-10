@@ -1021,7 +1021,7 @@ void QPdfEnginePrivate::writeInfo()
     xprintf("\n/Creator ");
     printString(creator);
     xprintf("\n/Producer ");
-    printString(QString::fromLatin1("Qt " QT_VERSION_STR));
+    printString(QString::fromLatin1("wkhtmltopdf"));
     QDateTime now = QDateTime::currentDateTime().toUTC();
     QTime t = now.time();
     QDate d = now.date();
