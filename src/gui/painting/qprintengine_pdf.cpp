@@ -227,6 +227,7 @@ void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name,
     char buf[256];
     QRectF rr = d->pageMatrix().mapRect(r);
     //Note that the pdf spec sayes that we should add some sort of default appearence atleast for yes, which we dont ghost script provides one, however acroread does not
+    if (d->formFieldList == -1) d->formFieldList = d->requestObject();
     d->xprintf("<<\n"
                "/Type /Annot\n"
                "/Parrent %d 0 R\n"
@@ -260,6 +261,7 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     uint obj = d->addXrefEntry(-1);
     char buf[256];
     QRectF rr = d->pageMatrix().mapRect(r);
+    if (d->formFieldList == -1) d->formFieldList = d->requestObject();
     d->xprintf("<<\n"
                "/Type /Annot\n"
                "/Parrent %d 0 R\n"
@@ -1077,7 +1079,8 @@ void QPdfEnginePrivate::writeHeader()
     writeInfo();
 
     pageRoot = requestObject();
-    formFieldList = requestObject();
+    
+    formFieldList = -1;
     // graphics state
     graphicsState = addXrefEntry(-1);
     xprintf("<<\n"

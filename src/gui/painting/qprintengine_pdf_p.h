@@ -201,7 +201,7 @@ private:
     void writeFonts();
     void embedFont(QFontSubset *font);
 
-    uint formFieldList;
+    int formFieldList;
     QVector<uint> formFields;
     QVector<int> xrefPositions;
     QDataStream* stream;
