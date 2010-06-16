@@ -5383,7 +5383,7 @@ void QPainter::drawPixmap(const QPointF &p, const QPixmap &pm)
     }
 }
 
-void QPainter::drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr)
+void QPainter::drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr, const QByteArray * data)
 {
 #if defined QT_DEBUG_DRAW
     if (qt_show_painter_debug_output)
@@ -5508,7 +5508,7 @@ void QPainter::drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr)
             x += d->state->matrix.dx();
             y += d->state->matrix.dy();
         }
-        d->engine->drawPixmap(QRectF(x, y, w, h), pm, QRectF(sx, sy, sw, sh));
+        d->engine->drawPixmap(QRectF(x, y, w, h), pm, QRectF(sx, sy, sw, sh), data);
     }
 }
 

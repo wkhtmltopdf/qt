@@ -166,7 +166,7 @@ bool QPdfEngine::end()
 }
 
 
-void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, const QRectF &sr)
+void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, const QRectF &sr, const QByteArray * data)
 {
     if (sr.isEmpty() || rectangle.isEmpty() || pixmap.isNull())
         return;
@@ -178,7 +178,7 @@ void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, con
     QPixmap pm = sourceRect != pixmap.rect() ? pixmap.copy(sourceRect) : pixmap;
     QImage image = pm.toImage();
     bool bitmap = true;
-    const int object = d->addImage(image, &bitmap, pm.cacheKey());
+    const int object = d->addImage(image, &bitmap, pm.cacheKey(), data);
     if (object < 0)
         return;
 
@@ -523,7 +523,7 @@ int QPdfEnginePrivate::addBrushPattern(const QTransform &m, bool *specifyColor, 
 /*!
  * Adds an image to the pdf and return the pdf-object id. Returns -1 if adding the image failed.
  */
-int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_no)
+int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_no, const QByteArray * data)
 {
     if (img.isNull())
         return -1;
@@ -568,10 +568,14 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
         bool hasMask = false;
 
         if (QImageWriter::supportedImageFormats().contains("jpeg") && colorMode != QPrinter::GrayScale) {
-            QBuffer buffer(&imageData);
-            QImageWriter writer(&buffer, "jpeg");
-            writer.setQuality(94);
-            writer.write(image);
+            if (data != 0 && data->size() > 2 && (unsigned char)data->data()[0] == 0xff && (unsigned char)data->data()[1] == 0xd8) {
+                imageData = *data;
+            } else {
+                QBuffer buffer(&imageData);
+                QImageWriter writer(&buffer, "jpeg");
+                writer.setQuality(94);
+                writer.write(image);
+            }
             dct = true;
 
             if (format != QImage::Format_RGB32) {

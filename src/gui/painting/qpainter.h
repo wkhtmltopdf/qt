@@ -364,7 +364,7 @@ public:
     inline void drawPicture(const QPoint &p, const QPicture &picture);
 #endif
 
-    void drawPixmap(const QRectF &targetRect, const QPixmap &pixmap, const QRectF &sourceRect);
+    void drawPixmap(const QRectF &targetRect, const QPixmap &pixmap, const QRectF &sourceRect, const QByteArray * data=0);
     inline void drawPixmap(const QRect &targetRect, const QPixmap &pixmap, const QRect &sourceRect);
     inline void drawPixmap(int x, int y, int w, int h, const QPixmap &pm,
                            int sx, int sy, int sw, int sh);

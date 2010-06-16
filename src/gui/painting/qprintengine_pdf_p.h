@@ -1,3 +1,4 @@
+
 /****************************************************************************
 **
 ** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
@@ -92,7 +93,12 @@ public:
     // reimplementations QPaintEngine
     bool begin(QPaintDevice *pdev);
     bool end();
-    void drawPixmap (const QRectF & rectangle, const QPixmap & pixmap, const QRectF & sr);
+
+    void drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr, const QByteArray * data=0);
+    void drawPixmap(const QRectF & rectangle, const QPixmap & pixmap, const QRectF & sr) {
+		drawPixmap(rectangle, pixmap, sr, 0);
+	}
+
     void drawImage(const QRectF &r, const QImage &pm, const QRectF &sr,
                    Qt::ImageConversionFlags flags = Qt::AutoColor);
     void drawTiledPixmap (const QRectF & rectangle, const QPixmap & pixmap, const QPointF & point);
@@ -141,7 +147,7 @@ public:
     void writeHeader();
     void writeTail();
 
-    int addImage(const QImage &image, bool *bitmap, qint64 serial_no);
+    int addImage(const QImage &image, bool *bitmap, qint64 serial_no, const QByteArray * data=0);
     int addConstantAlphaObject(int brushAlpha, int penAlpha = 255);
     int addBrushPattern(const QTransform &matrix, bool *specifyColor, int *gStateObject);
 
