@@ -308,6 +308,16 @@ void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, con
     QRect sourceRect = sr.toRect();
     QPixmap pm = sourceRect != pixmap.rect() ? pixmap.copy(sourceRect) : pixmap;
     QImage image = pm.toImage();
+	
+	double imageDpi = 200;
+	
+	QRectF a = d->stroker.matrix.mapRect(rectangle);
+	QRectF c = d->paperRect();
+	int maxWidth = int(a.width() / c.width() * d->width() / 72.0 * imageDpi);
+	int maxHeight = int(a.height() / c.height() * d->height() / 72.0 * imageDpi);
+	if (image.width() > maxWidth || image.height() > maxHeight)
+		image = image.scaled( image.size().boundedTo( QSize(maxWidth, maxHeight) ), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+	
     bool bitmap = true;
     const int object = d->addImage(image, &bitmap, pm.cacheKey(), data);
     if (object < 0)
@@ -315,7 +325,7 @@ void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, con
 
     *d->currentPage << "q\n/GSa gs\n";
     *d->currentPage
-        << QPdf::generateMatrix(QTransform(rectangle.width() / sr.width(), 0, 0, rectangle.height() / sr.height(),
+        << QPdf::generateMatrix(QTransform(rectangle.width() / image.width(), 0, 0, rectangle.height() / image.height(),
                                            rectangle.x(), rectangle.y()) * (d->simplePen ? QTransform() : d->stroker.matrix));
     if (bitmap) {
         // set current pen as d->brush
