@@ -106,16 +106,24 @@ inline QPaintEngine::PaintEngineFeatures qt_pdf_decide_features()
 
 void QPdfEngine::setProperty(PrintEnginePropertyKey key, const QVariant &value) {
     Q_D(QPdfEngine);
-    if (key==PKK_UseCompression)
+    if (key==PPK_UseCompression)
         d->doCompress = value.toBool();
+	else if (key==PPK_ImageQuality)
+		d->imageQuality = value.toInt();
+	else if (key==PPK_ImageDPI)
+		d->imageDPI = value.toInt();
     else 
         QPdfBaseEngine::setProperty(key, value);
 }
 
 QVariant QPdfEngine::property(PrintEnginePropertyKey key) const {
     Q_D(const QPdfEngine);
-    if (key==PKK_UseCompression)
+    if (key==PPK_UseCompression)
         return d->doCompress;
+	else if (key==PPK_ImageQuality)
+		return d->imageQuality;
+	else if (key==PPK_ImageDPI)
+        return d->imageDPI;
     else
         return QPdfBaseEngine::property(key);
 }
@@ -307,32 +315,35 @@ void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, con
 
     QRect sourceRect = sr.toRect();
     QPixmap pm = sourceRect != pixmap.rect() ? pixmap.copy(sourceRect) : pixmap;
-    QImage image = pm.toImage();
-	
-	double imageDpi = 200;
-	
-	QRectF a = d->stroker.matrix.mapRect(rectangle);
-	QRectF c = d->paperRect();
-	int maxWidth = int(a.width() / c.width() * d->width() / 72.0 * imageDpi);
-	int maxHeight = int(a.height() / c.height() * d->height() / 72.0 * imageDpi);
-	if (image.width() > maxWidth || image.height() > maxHeight)
-		image = image.scaled( image.size().boundedTo( QSize(maxWidth, maxHeight) ), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-	
+    QImage unscaled = pm.toImage();
+    QImage image = unscaled;
+    
+    QRectF a = d->stroker.matrix.mapRect(rectangle);
+    QRectF c = d->paperRect();
+    int maxWidth = int(a.width() / c.width() * d->width() / 72.0 * d->imageDPI);
+    int maxHeight = int(a.height() / c.height() * d->height() / 72.0 * d->imageDPI);
+    if (image.width() > maxWidth || image.height() > maxHeight)
+        image = unscaled.scaled( image.size().boundedTo( QSize(maxWidth, maxHeight) ), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    
+    bool useScaled=true;
     bool bitmap = true;
-    const int object = d->addImage(image, &bitmap, pm.cacheKey(), data);
+    const int object = d->addImage(image, &bitmap, pm.cacheKey(), &unscaled, (sr == pixmap.rect()?data:0), &useScaled );
+    int width = useScaled?image.width():unscaled.width();
+    int height = useScaled?image.height():unscaled.height();
+
     if (object < 0)
         return;
 
     *d->currentPage << "q\n/GSa gs\n";
     *d->currentPage
-        << QPdf::generateMatrix(QTransform(rectangle.width() / image.width(), 0, 0, rectangle.height() / image.height(),
+        << QPdf::generateMatrix(QTransform(rectangle.width() / width, 0, 0, rectangle.height() / height,
                                            rectangle.x(), rectangle.y()) * (d->simplePen ? QTransform() : d->stroker.matrix));
     if (bitmap) {
         // set current pen as d->brush
         d->brush = d->pen.brush();
     }
     setBrush();
-    d->currentPage->streamImage(image.width(), image.height(), object);
+    d->currentPage->streamImage(width, height, object);
     *d->currentPage << "Q\n";
 
     d->brush = b;
@@ -443,6 +454,9 @@ QPdfEnginePrivate::QPdfEnginePrivate(QPrinter::PrinterMode m)
 {
     streampos = 0;
     doCompress = true;
+    imageDPI = 1400;
+    imageQuality = 94;
+
     stream = new QDataStream;
     pageOrder = QPrinter::FirstPageFirst;
     orientation = QPrinter::Portrait;
@@ -707,10 +721,34 @@ int QPdfEnginePrivate::addBrushPattern(const QTransform &m, bool *specifyColor, 
     return patternObj;
 }
 
+
+void QPdfEnginePrivate::convertImage(const QImage & image, QByteArray & imageData) {
+    int w = image.width();
+    int h = image.height();
+    imageData.resize(colorMode == QPrinter::GrayScale ? w * h : 3 * w * h);
+    uchar *data = (uchar *)imageData.data();
+    for (int y = 0; y < h; ++y) {
+        const QRgb *rgb = (const QRgb *)image.scanLine(y);
+        if (colorMode == QPrinter::GrayScale) {
+            for (int x = 0; x < w; ++x) {
+                *(data++) = qGray(*rgb);
+                ++rgb;
+            }
+        } else {
+            for (int x = 0; x < w; ++x) {
+                *(data++) = qRed(*rgb);
+                *(data++) = qGreen(*rgb);
+                *(data++) = qBlue(*rgb);
+                ++rgb;
+            }
+        }
+    }
+}
+
 /*!
  * Adds an image to the pdf and return the pdf-object id. Returns -1 if adding the image failed.
  */
-int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_no, const QByteArray * data)
+int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_no, const QImage * noneScaled, const QByteArray * data, bool * useScaled)
 {
     if (img.isNull())
         return -1;
@@ -748,69 +786,91 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
         }
         object = writeImage(data, w, h, d, 0, 0);
     } else {
-        QByteArray softMaskData;
-        bool dct = false;
         QByteArray imageData;
+        uLongf target=1024*1024*1024;
+        bool uns=false;
+        bool dct = false;
+        if (QImageWriter::supportedImageFormats().contains("jpeg") && colorMode != QPrinter::GrayScale) {
+            QByteArray imageData2;
+            
+            QBuffer buffer(&imageData2);
+            QImageWriter writer(&buffer, "jpeg");
+            writer.setQuality(imageQuality);
+            writer.write(image);
+            
+            if ((uLongf)imageData2.size() < target) {
+                imageData=imageData2;
+                target = imageData2.size();
+                dct = true;
+                uns=false;
+            }
+        }
+
+        if (noneScaled && noneScaled->rect() != image.rect()) {
+            QByteArray imageData2;
+            convertImage(*noneScaled, imageData2);
+            uLongf len = imageData2.size();
+            uLongf destLen = len + len/100 + 13; // zlib requirement
+            Bytef* dest = new Bytef[destLen];
+            if (Z_OK == ::compress(dest, &destLen, (const Bytef*) imageData2.data(), (uLongf)len) &&
+                (uLongf)destLen < target) {
+                imageData=imageData2;
+                target=destLen;
+                dct=false;
+                uns=true;
+            }
+            delete[] dest;
+        }
+        
+        {
+            QByteArray imageData2;
+            convertImage(image, imageData2);
+            uLongf len = imageData2.size();
+            uLongf destLen = len + len/100 + 13; // zlib requirement
+            Bytef* dest = new Bytef[destLen];
+            if (Z_OK == ::compress(dest, &destLen, (const Bytef*) imageData2.data(), (uLongf)len) &&
+                (uLongf)destLen < target) {
+                imageData=imageData2;
+                target=destLen;
+                dct=false;
+                uns=false;
+            }
+            delete[] dest;
+        }
+
+        if (colorMode != QPrinter::GrayScale && noneScaled != 0 && data != 0 &&
+            data->size() > 2 && (unsigned char)data->data()[0] == 0xff && (unsigned char)data->data()[1] == 0xd8 &&
+            (uLongf)data->size()*10 < target*13) {
+            imageData = *data;
+            target=data->size();
+            dct=true;
+            uns=true;
+        }
+
+        if (uns) {
+            w = noneScaled->width();
+            h = noneScaled->height();
+        }
+        if (useScaled) *useScaled = (uns?false:true);
+        QByteArray softMaskData;
         bool hasAlpha = false;
         bool hasMask = false;
-
-        if (QImageWriter::supportedImageFormats().contains("jpeg") && colorMode != QPrinter::GrayScale) {
-            if (data != 0 && data->size() > 2 && (unsigned char)data->data()[0] == 0xff && (unsigned char)data->data()[1] == 0xd8) {
-                imageData = *data;
-            } else {
-                QBuffer buffer(&imageData);
-                QImageWriter writer(&buffer, "jpeg");
-                writer.setQuality(94);
-                writer.write(image);
-            }
-            dct = true;
-
-            if (format != QImage::Format_RGB32) {
-                softMaskData.resize(w * h);
-                uchar *sdata = (uchar *)softMaskData.data();
-                for (int y = 0; y < h; ++y) {
-                    const QRgb *rgb = (const QRgb *)image.scanLine(y);
-                    for (int x = 0; x < w; ++x) {
-                        uchar alpha = qAlpha(*rgb);
-                        *sdata++ = alpha;
-                        hasMask |= (alpha < 255);
-                        hasAlpha |= (alpha != 0 && alpha != 255);
-                        ++rgb;
-                    }
-                }
-            }
-        } else {
-            imageData.resize(colorMode == QPrinter::GrayScale ? w * h : 3 * w * h);
-            uchar *data = (uchar *)imageData.data();
+        
+        if (format != QImage::Format_RGB32) {
             softMaskData.resize(w * h);
             uchar *sdata = (uchar *)softMaskData.data();
             for (int y = 0; y < h; ++y) {
-                const QRgb *rgb = (const QRgb *)image.scanLine(y);
-                if (colorMode == QPrinter::GrayScale) {
-                    for (int x = 0; x < w; ++x) {
-                        *(data++) = qGray(*rgb);
-                        uchar alpha = qAlpha(*rgb);
-                        *sdata++ = alpha;
-                        hasMask |= (alpha < 255);
-                        hasAlpha |= (alpha != 0 && alpha != 255);
-                        ++rgb;
-                    }
-                } else {
-                    for (int x = 0; x < w; ++x) {
-                        *(data++) = qRed(*rgb);
-                        *(data++) = qGreen(*rgb);
-                        *(data++) = qBlue(*rgb);
-                        uchar alpha = qAlpha(*rgb);
-                        *sdata++ = alpha;
-                        hasMask |= (alpha < 255);
-                        hasAlpha |= (alpha != 0 && alpha != 255);
-                        ++rgb;
-                    }
+                const QRgb *rgb = (const QRgb *)(uns?noneScaled->scanLine(y):image.scanLine(y));
+                for (int x = 0; x < w; ++x) {
+                    uchar alpha = qAlpha(*rgb);
+                    *sdata++ = alpha;
+                    hasMask |= (alpha < 255);
+                    hasAlpha |= (alpha != 0 && alpha != 255);
+                    ++rgb;
                 }
             }
-            if (format == QImage::Format_RGB32)
-                hasAlpha = hasMask = false;
         }
+        
         int maskObject = 0;
         int softMaskObject = 0;
         if (hasAlpha) {
