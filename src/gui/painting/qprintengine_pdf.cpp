@@ -1018,16 +1018,25 @@ void QPdfEnginePrivate::writeInfo()
     printString(creator);
     xprintf("\n/Producer ");
     printString(QString::fromLatin1("wkhtmltopdf"));
-    QDateTime now = QDateTime::currentDateTime().toUTC();
+    QDateTime now = QDateTime::currentDateTime();
     QTime t = now.time();
     QDate d = now.date();
-    xprintf("\n/CreationDate (D:%d%02d%02d%02d%02d%02d)\n",
+    xprintf("\n/CreationDate (D:%d%02d%02d%02d%02d%02d",
             d.year(),
             d.month(),
             d.day(),
             t.hour(),
             t.minute(),
             t.second());
+    QDateTime fake=now;
+    fake.setTimeSpec(Qt::UTC);
+    int offset = now.secsTo(fake);
+    if (offset == 0)
+        xprintf("Z)\n");
+    else if (offset < 0)
+        xprintf("-%02d'%02d')\n", (-offset)/60/60 , ((-offset)/60) % 60);
+    else if (offset > 0)
+        xprintf("+%02d'%02d')\n", offset/60/60 , (offset/60) % 60);
     xprintf(">>\n"
             "endobj\n");
 }
