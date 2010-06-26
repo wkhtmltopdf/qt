@@ -96,6 +96,9 @@ public:
 
     void setResolution(int dpi);
     int resolution() const;
+
+    void setViewBoxClip(bool clip);
+    bool viewBoxClip() const;
 protected:
     QPaintEngine *paintEngine() const;
     int metric(QPaintDevice::PaintDeviceMetric metric) const;
