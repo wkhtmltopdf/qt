@@ -171,6 +171,10 @@ public:
     virtual void addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly) {
         Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly);
     }
+    virtual void addRadioButton(const QRectF &r, const QString & group="", bool checked=false, const QString &name="", bool readOnly=false) {
+        Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(group);
+    }
+
     virtual void drawLines(const QLine *lines, int lineCount);
     virtual void drawLines(const QLineF *lines, int lineCount);
 
@@ -187,9 +191,9 @@ public:
 
     virtual void drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr) = 0;
     virtual void drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr, const QByteArray * data) {
-		Q_UNUSED(data);
-		drawPixmap(r,pm,sr);
-	}
+        Q_UNUSED(data);
+        drawPixmap(r,pm,sr);
+    }
     virtual void drawTextItem(const QPointF &p, const QTextItem &textItem);
     virtual void drawTiledPixmap(const QRectF &r, const QPixmap &pixmap, const QPointF &s);
     virtual void drawImage(const QRectF &r, const QImage &pm, const QRectF &sr,

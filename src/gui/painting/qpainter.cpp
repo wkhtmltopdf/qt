@@ -7398,6 +7398,16 @@ void QPainter::addCheckBox(const QRectF &r, bool checked, const QString &name, b
     d->engine->addCheckBox(worldTransform().mapRect(r), checked, name, readOnly);
 }
 
+
+void QPainter::addRadioButton(const QRectF &r, const QString & group, bool checked, const QString &name, bool readOnly) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addRadioButton: Painter not active");
+        return;
+    }
+    d->engine->addRadioButton(worldTransform().mapRect(r), group, checked, name, readOnly);
+}
+
 /*!
     Sets the given render \a hint on the painter if \a on is true;
     otherwise clears the render hint.
