@@ -98,7 +98,7 @@ greaterThan(QT_MINOR_VERSION, 5) {
 
 # Disable XSLT support with QtXmlPatterns in the 2.0 release
 !contains(DEFINES, ENABLE_XSLT=.) {
-    DEFINES += ENABLE_XSLT=0
+    DEFINES += ENABLE_XSLT=1
 }
 
 # Bearer management is part of Qt 4.7
