@@ -228,5 +228,11 @@ SOURCES += \
     SOURCES += wtf/TCSystemAlloc.cpp
 }
 
+static {
+  !isEmpty(INSTALL_LIBS): target.path = $$INSTALL_LIBS
+  else: target.path = $$[QT_INSTALL_LIBS]
+  INSTALLS += target
+}
+
 # Disable C++0x mode in JSC for those who enabled it in their Qt's mkspec
 *-g++*:QMAKE_CXXFLAGS -= -std=c++0x -std=gnu++0x
