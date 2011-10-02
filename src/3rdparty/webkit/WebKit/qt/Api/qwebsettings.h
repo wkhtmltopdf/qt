@@ -113,6 +113,12 @@ public:
     void setPrintingMediaType(const QString &type);
     QString printingMediaType() const;
 
+    void setPrintingMinimumShrinkFactor(qreal printingMinimumShrinkFactor);
+    qreal printingMinimumShrinkFactor() const;
+
+    void setPrintingMaximumShrinkFactor(qreal printingMaximimShrinkFactor);
+    qreal printingMaximumShrinkFactor() const;
+
     static void setIconDatabasePath(const QString &location);
     static QString iconDatabasePath();
     static void clearIconDatabase();
