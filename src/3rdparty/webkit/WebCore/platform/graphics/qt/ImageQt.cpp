@@ -39,6 +39,7 @@
 #include "GraphicsContext.h"
 #include "StillImageQt.h"
 #include "qwebsettings.h"
+#include "SharedBuffer.h"
 
 #include <QPixmap>
 #include <QPainter>
@@ -189,7 +190,8 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
 
     // Test using example site at
     // http://www.meyerweb.com/eric/css/edge/complexspiral/demo.html
-    painter->drawPixmap(dst, *image, src);
+	QByteArray a = QByteArray::fromRawData(data()->data(), data()->size());
+    painter->drawPixmap(dst, *image, src, &a);
 
     ctxt->restore();
 
