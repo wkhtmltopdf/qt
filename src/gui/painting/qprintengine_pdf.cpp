@@ -263,7 +263,6 @@ void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name,
     d->formFields.push_back(obj);
 }
 
-<<<<<<< HEAD
 void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength)
 {
     Q_D(QPdfEngine);
@@ -306,8 +305,6 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     d->formFields.push_back(obj);
 }
 
-=======
->>>>>>> imageImprovements
 void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, const QRectF &sr, const QByteArray * data)
 {
     if (sr.isEmpty() || rectangle.isEmpty() || pixmap.isNull())
@@ -459,10 +456,7 @@ QPdfEnginePrivate::QPdfEnginePrivate(QPrinter::PrinterMode m)
     doCompress = true;
     imageDPI = 1400;
     imageQuality = 94;
-<<<<<<< HEAD
 
-=======
->>>>>>> imageImprovements
     stream = new QDataStream;
     pageOrder = QPrinter::FirstPageFirst;
     orientation = QPrinter::Portrait;

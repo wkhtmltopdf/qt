@@ -98,7 +98,7 @@ QRasterWindowSurface::QRasterWindowSurface(QWidget *window, bool setDefaultSurfa
         && window->x11Info().depth() == 32;
 #endif
 #ifndef QT_NO_MITHSM
-    d_ptr->needsSync = false;
+    //d_ptr->needsSync = false;
 #endif
 #endif
     d_ptr->image = 0;
