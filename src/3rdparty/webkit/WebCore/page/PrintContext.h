@@ -55,6 +55,8 @@ public:
     static int pageNumberForElement(Element*, const FloatSize& pageSizeInPixels);
     static int numberOfPages(Frame*, const FloatSize& pageSizeInPixels);
 
+public:
+    const Vector<IntRect> & getPageRects() const {return m_pageRects;}
 protected:
     void computePageRectsWithPageSize(const FloatSize& pageSizeInPixels, float userScaleFactor);
 

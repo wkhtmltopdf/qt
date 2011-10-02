@@ -160,6 +160,7 @@ private:
     friend class QWebHitTestResultPrivate;
     friend class QWebPage;
     friend class JSC::Bindings::QtWebElementRuntime;
+    friend class QWebPrinter;
 
     QWebElementPrivate* d;
     WebCore::Element* m_element;

@@ -44,6 +44,9 @@ class QPrinter;
 QT_END_NAMESPACE
 
 class QWebNetworkRequest;
+#ifndef QT_NO_PRINTER
+class QWebPrinterPrivate;
+#endif
 class QWebFramePrivate;
 class QWebPage;
 class QWebHitTestResult;
@@ -101,6 +104,20 @@ private:
     friend class QWebPagePrivate;
     friend class QWebPage;
 };
+
+#ifndef QT_NO_PRINTER
+class QWEBKIT_EXPORT QWebPrinter {
+public:
+    QWebPrinter(const QWebFrame * frame, QPaintDevice * printer, QPainter &painter);
+    ~QWebPrinter();
+    void spoolPage(int i) const;
+    QPainter * painter();
+    int pageCount() const;
+    QPair<int, QRectF> elementLocation(const QWebElement & e);
+private:
+    QWebPrinterPrivate * d;
+};
+#endif
 
 class QWEBKIT_EXPORT QWebFrame : public QObject {
     Q_OBJECT
@@ -227,6 +244,8 @@ private:
     friend class QWebPage;
     friend class QWebPagePrivate;
     friend class QWebFramePrivate;
+    friend class QWebPrinterPrivate;
+    friend class QWebPrinter;
     friend class WebCore::WidgetPrivate;
     friend class WebCore::FrameLoaderClientQt;
     friend class WebCore::ChromeClientQt;
