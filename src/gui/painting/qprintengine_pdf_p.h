@@ -218,6 +218,10 @@ private:
     int imageDPI;
     int imageQuality;
 
+    bool doCompress;
+    int imageDPI;
+    int imageQuality;
+
     int writeImage(const QByteArray &data, int width, int height, int depth,
                    int maskObject, int softMaskObject, bool dct = false);
     void writePage();

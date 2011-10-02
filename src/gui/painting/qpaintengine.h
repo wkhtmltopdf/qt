@@ -194,6 +194,7 @@ public:
         Q_UNUSED(data);
         drawPixmap(r,pm,sr);
     }
+
     virtual void drawTextItem(const QPointF &p, const QTextItem &textItem);
     virtual void drawTiledPixmap(const QRectF &r, const QPixmap &pixmap, const QPointF &s);
     virtual void drawImage(const QRectF &r, const QImage &pm, const QRectF &sr,
