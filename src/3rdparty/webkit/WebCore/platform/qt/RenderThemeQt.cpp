@@ -143,21 +143,26 @@ RenderThemeQt::RenderThemeQt(Page* page)
     : RenderTheme()
     , m_page(page)
     , m_lineEdit(0)
+    , m_fallbackStyle(0)
 {
-    QPushButton button;
-    button.setAttribute(Qt::WA_MacSmallSize);
-    QFont defaultButtonFont = QApplication::font(&button);
-    QFontInfo fontInfo(defaultButtonFont);
-    m_buttonFontFamily = defaultButtonFont.family();
+    if (QApplication::type() != QApplication::Tty) {
+        QPushButton button;
+        button.setAttribute(Qt::WA_MacSmallSize);
+        QFont defaultButtonFont = QApplication::font(&button);
+        QFontInfo fontInfo(defaultButtonFont);
+        m_buttonFontFamily = defaultButtonFont.family();
 #ifdef Q_WS_MAC
-    m_buttonFontPixelSize = fontInfo.pixelSize();
+        m_buttonFontPixelSize = fontInfo.pixelSize();
 #endif
 
 #if USE(QT_MOBILE_THEME)
-    m_fallbackStyle = new Maemo5WebStyle;
+        m_fallbackStyle = new Maemo5WebStyle;
 #else
-    m_fallbackStyle = QStyleFactory::create(QLatin1String("windows"));
+        m_fallbackStyle = QStyleFactory::create(QLatin1String("windows"));
 #endif
+    } else  {
+        m_buttonFontFamily = "sans-serif";
+    }
 }
 
 RenderThemeQt::~RenderThemeQt()
@@ -266,6 +271,9 @@ bool RenderThemeQt::supportsControlTints() const
 
 int RenderThemeQt::findFrameLineWidth(QStyle* style) const
 {
+    if (QApplication::type()==QApplication::Tty)
+        return 1;
+
 #ifndef QT_NO_LINEEDIT
     if (!m_lineEdit)
         m_lineEdit = new QLineEdit();
@@ -348,8 +356,12 @@ void RenderThemeQt::systemFont(int, FontDescription&) const
 
 int RenderThemeQt::minimumMenuListSize(RenderStyle*) const
 {
-    const QFontMetrics &fm = QApplication::fontMetrics();
-    return 7 * fm.width(QLatin1Char('x'));
+    if (QApplication::type()!=QApplication::Tty) {
+        const QFontMetrics &fm = QApplication::fontMetrics();
+        return 7 * fm.width(QLatin1Char('x'));
+    } else {
+         return 1;
+    }
 }
 
 void RenderThemeQt::computeSizeBasedOnStyle(RenderStyle* renderStyle) const
