@@ -479,7 +479,7 @@ QPdfEnginePrivate::~QPdfEnginePrivate()
 
 void QPdfEnginePrivate::printAnchor(const QString &name) {
     QByteArray a = name.toUtf8();
-    if (a.size() >= 127) 
+    if (a.size() >= 127)
         a = QCryptographicHash::hash(a,QCryptographicHash::Sha1);
     xprintf("/");
     for (int i=0; i < a.size(); ++i) {
@@ -489,6 +489,8 @@ void QPdfEnginePrivate::printAnchor(const QString &name) {
             ('0' <= c && c <= '9') ||
             c == '.' || c == '_') 
             xprintf("%c", c);
+        else if(c == 0)
+            xprintf("!");
         else
             xprintf("#%02x", c);
     }
