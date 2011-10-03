@@ -175,6 +175,18 @@ bool QPdfEngine::begin(QPaintDevice *pdev)
 bool QPdfEngine::end()
 {
     Q_D(QPdfEngine);
+	
+    uint dests;
+    if (d->anchors.size()) {
+        dests = d->addXrefEntry(-1);
+        d->xprintf("<<\n");
+        for (QHash<QString, uint>::iterator i=d->anchors.begin();
+             i != d->anchors.end(); ++i) {
+            d->printAnchor(i.key());
+            d->xprintf(" %d 0 R\n", i.value());
+        }
+        d->xprintf(">>\n");
+    }	
 
     if (d->outlineRoot) {
         d->outlineRoot->obj = d->requestObject();
@@ -208,15 +220,8 @@ bool QPdfEngine::end()
                    "/PageMode /UseOutlines\n", d->outlineRoot->obj);
     if (d->formFields.size()) 
         d->xprintf("/AcroForm %d 0 R\n", d->formFieldList);
-    if (d->anchors.size()) {
-        d->xprintf("/Dests <<\n");
-        for (QHash<QString, uint>::iterator i=d->anchors.begin();
-           i != d->anchors.end(); ++i) {
-            d->printAnchor(i.key());
-            d->xprintf(" %d 0 R\n", i.value());
-        }
-        d->xprintf(">>\n");
-    }
+    if (d->anchors.size())
+        d->xprintf("/Dests %d 0 R\n", dests);
     d->xprintf(">>\n"
                "endobj\n");
 
