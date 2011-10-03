@@ -790,6 +790,9 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
         uLongf target=1024*1024*1024;
         bool uns=false;
         bool dct = false;
+        
+        d = (colorMode == QPrinter::GrayScale) ? 8 : 32;
+        	
         if (QImageWriter::supportedImageFormats().contains("jpeg") && colorMode != QPrinter::GrayScale) {
             QByteArray imageData2;
             
@@ -838,9 +841,10 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
             delete[] dest;
         }
 
-        if (colorMode != QPrinter::GrayScale && noneScaled != 0 && data != 0 &&
-            data->size() > 2 && (unsigned char)data->data()[0] == 0xff && (unsigned char)data->data()[1] == 0xd8 &&
+        if (colorMode != QPrinter::GrayScale && noneScaled != 0 && data != 0 && 
+            data->size() > 9 && (unsigned char)data->data()[0] == 0xff && (unsigned char)data->data()[1] == 0xd8 &&
             (uLongf)data->size()*10 < target*13) {
+            d = data->data()[6] * 8; //Read the number of channels from the jpeg header
             imageData = *data;
             target=data->size();
             dct=true;
@@ -892,7 +896,7 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
             }
             maskObject = writeImage(mask, w, h, 1, 0, 0);
         }
-        object = writeImage(imageData, w, h, colorMode == QPrinter::GrayScale ? 8 : 32,
+        object = writeImage(imageData, w, h, d,
                             maskObject, softMaskObject, dct);
     }
     imageCache.insert(serial_no, object);
