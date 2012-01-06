@@ -217,6 +217,12 @@ symbian: {
     QMAKE_CXXFLAGS.ARMCC += -OTime -O3
 }
 
+static {
+  !isEmpty(INSTALL_LIBS): target.path = $$INSTALL_LIBS
+  else: target.path = $$[QT_INSTALL_LIBS]
+  INSTALLS += target
+}
+
 lessThan(QT_GCC_MAJOR_VERSION, 5) {
     # GCC 4.5 and before
     lessThan(QT_GCC_MINOR_VERSION, 6) {
