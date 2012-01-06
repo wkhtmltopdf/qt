@@ -16,7 +16,6 @@ CONFIG += staticlib
 DESTDIR = $$WEBCORE_DESTDIR
 
 DEFINES += BUILDING_WEBKIT
-DEFINES += QT_MAKEDLL
 
 contains(DEFINES, WTF_USE_QT_MOBILE_THEME=1) {
     DEFINES += ENABLE_NO_LISTBOX_RENDERING=1
@@ -3464,7 +3463,7 @@ contains(DEFINES, ENABLE_WEBGL=1) {
         INCLUDEPATH += $$PWD/platform/graphics/gpu
 }
 
-win32:!win32-g++*:contains(QMAKE_HOST.arch, x86_64):{
+win32:!win32-g++*:contains(QMAKE_TARGET.arch, x86_64):{
     asm_compiler.commands = ml64 /c
     asm_compiler.commands +=  /Fo ${QMAKE_FILE_OUT} ${QMAKE_FILE_IN}
     asm_compiler.output = ${QMAKE_VAR_OBJECTS_DIR}${QMAKE_FILE_BASE}$${first(QMAKE_EXT_OBJ)}
@@ -3476,7 +3475,7 @@ win32:!win32-g++*:contains(QMAKE_HOST.arch, x86_64):{
 
     ASM_SOURCES += \
         plugins/win/PaintHooks.asm
-   if(win32-msvc2005|win32-msvc2008):equals(TEMPLATE_PREFIX, "vc") {
+   if(win32-msvc*):equals(TEMPLATE_PREFIX, "vc") {
         SOURCES += \
             plugins/win/PaintHooks.asm
    }

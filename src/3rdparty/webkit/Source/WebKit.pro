@@ -1,16 +1,11 @@
 TEMPLATE = subdirs
 CONFIG += ordered
+DEFINES += Q_NODLL Q_DECL_IMPORT QT_STATIC_BUILD STATIC
 
 include(WebKit.pri)
 
-!v8 {
-    exists($$PWD/JavaScriptCore/JavaScriptCore.pro): SUBDIRS += JavaScriptCore/JavaScriptCore.pro
-    exists($$PWD/JavaScriptCore/jsc.pro): SUBDIRS += JavaScriptCore/jsc.pro
-}
-
 webkit2:exists($$PWD/WebKit2/WebKit2.pro): SUBDIRS += WebKit2/WebKit2.pro
 
-SUBDIRS += WebCore
 SUBDIRS += WebKit/qt/QtWebKit.pro
 
 webkit2 {
@@ -21,8 +16,6 @@ webkit2 {
 contains(QT_CONFIG, declarative) {
     exists($$PWD/WebKit/qt/declarative): SUBDIRS += WebKit/qt/declarative
 }
-
-exists($$PWD/WebKit/qt/tests): SUBDIRS += WebKit/qt/tests
 
 build-qtscript {
     SUBDIRS += \
@@ -38,5 +31,3 @@ symbian {
     install.commands = $(MAKE) -C WebCore install
     QMAKE_EXTRA_TARGETS += install
 }
-
-include(WebKit/qt/docs/docs.pri)

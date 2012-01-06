@@ -2395,9 +2395,9 @@ bool Configure::checkAvailability(const QString &part)
         available = qmakeSpec == "win32-msvc2005" || qmakeSpec == "win32-msvc2008" ||
                 qmakeSpec == "win32-msvc2010" || qmakeSpec == "win32-msvc2012" || qmakeSpec.startsWith("win32-g++");
         if (dictionary[ "SHARED" ] == "no") {
-            cout << endl << "WARNING: Using static linking will disable the WebKit module." << endl
-                 << endl;
-            available = false;
+           // cout << endl << "WARNING: Using static linking will disable the WebKit module." << endl
+           //      << endl;
+          //  available = false;
         }
     } else if (part == "AUDIO_BACKEND") {
         available = true;
