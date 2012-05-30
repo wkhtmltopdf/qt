@@ -53,11 +53,17 @@ static int screenNumber(Widget* w)
 
 int screenDepth(Widget* w)
 {
+    if (QApplication::type() == QApplication::Tty)
+        return 32;
+
     return QApplication::desktop()->screen(screenNumber(w))->depth();
 }
 
 int screenDepthPerComponent(Widget* w)
 {
+    if (QApplication::type() == QApplication::Tty)
+        return 8;
+
     int depth = QApplication::desktop()->screen(0)->depth();
     if (w) {
         QWebPageClient* client = w->root()->hostWindow()->platformPageClient();
@@ -86,17 +92,26 @@ int screenDepthPerComponent(Widget* w)
 
 bool screenIsMonochrome(Widget* w)
 {
+    if (QApplication::type() == QApplication::Tty)
+        return false;
+
     return QApplication::desktop()->screen(screenNumber(w))->colorCount() == 2;
 }
 
 FloatRect screenRect(Widget* w)
 {
+    if (QApplication::type() == QApplication::Tty)
+        return FloatRect(0,0,800,600);
+
     QRect r = QApplication::desktop()->screenGeometry(screenNumber(w));
     return FloatRect(r.x(), r.y(), r.width(), r.height());
 }
 
 FloatRect screenAvailableRect(Widget* w)
 {
+    if (QApplication::type() == QApplication::Tty)
+        return FloatRect(0,0,800,600);
+
     QRect r = QApplication::desktop()->availableGeometry(screenNumber(w));
     return FloatRect(r.x(), r.y(), r.width(), r.height());
 }
