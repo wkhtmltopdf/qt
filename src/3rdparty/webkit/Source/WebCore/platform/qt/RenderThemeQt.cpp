@@ -178,7 +178,13 @@ RenderThemeQt::RenderThemeQt(Page* page)
     : RenderTheme()
     , m_page(page)
     , m_lineEdit(0)
+    , m_fallbackStyle(0)
 {
+    if (QApplication::type() == QApplication::Tty) {
+        m_buttonFontFamily = "sans-serif";
+        return;
+    }
+
     QPushButton button;
     button.setAttribute(Qt::WA_MacSmallSize);
     QFont defaultButtonFont = QApplication::font(&button);
@@ -339,6 +345,9 @@ bool RenderThemeQt::supportsControlTints() const
 
 int RenderThemeQt::findFrameLineWidth(QStyle* style) const
 {
+    if (QApplication::type()==QApplication::Tty)
+        return 1;
+
 #ifndef QT_NO_LINEEDIT
     if (!m_lineEdit)
         m_lineEdit = new QLineEdit();
@@ -445,6 +454,9 @@ Color RenderThemeQt::systemColor(int cssValueId) const
 
 int RenderThemeQt::minimumMenuListSize(RenderStyle*) const
 {
+    if (QApplication::type() == QApplication::Tty)
+        return 1;
+
     const QFontMetrics &fm = QApplication::fontMetrics();
     return fm.width(QLatin1Char('x'));
 }
