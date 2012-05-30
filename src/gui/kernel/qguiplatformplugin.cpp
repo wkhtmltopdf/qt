@@ -85,7 +85,7 @@ QGuiPlatformPlugin *qt_guiPlatformPlugin()
 
         QString key = QString::fromLocal8Bit(qgetenv("QT_PLATFORM_PLUGIN"));
 #ifdef Q_WS_X11
-        if (key.isEmpty()) {
+        if (QApplication::type() != QApplication::Tty && key.isEmpty()) {
             switch(X11->desktopEnvironment) {
             case DE_KDE:
                 key = QString::fromLatin1("kde");

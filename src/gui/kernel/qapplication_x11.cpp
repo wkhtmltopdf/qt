@@ -2267,6 +2267,8 @@ void qt_init(QApplicationPrivate *priv, int,
         QSegfaultHandler::initialize(priv->argv, priv->argc);
 #endif
         QCursorData::initialize();
+    } else if (!QApplicationPrivate::graphics_system_name.isNull()) {
+        QApplicationPrivate::graphics_system = QGraphicsSystemFactory::create(QApplicationPrivate::graphics_system_name);
     }
     QFont::initialize();
 
