@@ -47,6 +47,7 @@
 #include "qnativeimage_p.h"
 #include "qimage_p.h"
 #include "qpaintengine.h"
+#include "kernel/qapplication_p.h"
 
 #include "qbitmap.h"
 #include "qimage.h"
@@ -115,8 +116,10 @@ void QRasterPixmapData::resize(int width, int height)
 #else
     if (pixelType() == BitmapType)
         format = QImage::Format_MonoLSB;
-    else
+    else if (qt_is_gui_used)
         format = QNativeImage::systemFormat();
+    else
+        format = QImage::Format_RGB32;
 #endif
 
     image = QImage(width, height, format);
@@ -432,7 +435,7 @@ void QRasterPixmapData::createPixmapForImage(QImage &sourceImage, Qt::ImageConve
                     ? QImage::Format_ARGB32_Premultiplied
                     : QImage::Format_RGB32;
         } else {
-            QImage::Format opaqueFormat = QNativeImage::systemFormat();
+            QImage::Format opaqueFormat = qt_is_gui_used ? QNativeImage::systemFormat() : QImage::Format_RGB32;
             QImage::Format alphaFormat = QImage::Format_ARGB32_Premultiplied;
 
 #if !defined(QT_HAVE_NEON) && !defined(QT_ALWAYS_HAVE_SSE2)
