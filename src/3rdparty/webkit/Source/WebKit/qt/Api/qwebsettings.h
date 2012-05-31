@@ -116,6 +116,9 @@ public:
     void setDefaultTextEncoding(const QString &encoding);
     QString defaultTextEncoding() const;
 
+    void setPrintingMediaType(const QString &type);
+    QString printingMediaType() const;
+
     static void setIconDatabasePath(const QString &location);
     static QString iconDatabasePath();
     static void clearIconDatabase();
