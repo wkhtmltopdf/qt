@@ -185,6 +185,8 @@ Settings::Settings(Page* page)
     , m_allowDisplayOfInsecureContent(true)
     , m_allowRunningOfInsecureContent(true)
     , m_passwordEchoEnabled(false)
+    , m_printingMinimumShrinkFactor(0.0)
+    , m_printingMaximumShrinkFactor(0.0)
 {
     // A Frame may not have been created yet, so we initialize the AtomicString 
     // hash before trying to use it.
@@ -749,5 +751,16 @@ void Settings::setTiledBackingStoreEnabled(bool enabled)
         m_page->mainFrame()->setTiledBackingStoreEnabled(enabled);
 #endif
 }
+
+void Settings::setPrintingMinimumShrinkFactor(float printingMinimumShrinkFactor)
+{
+    m_printingMinimumShrinkFactor = printingMinimumShrinkFactor;
+}    
+
+void Settings::setPrintingMaximumShrinkFactor(float printingMaximumShrinkFactor)
+{
+    m_printingMaximumShrinkFactor = printingMaximumShrinkFactor;
+}    
+
 
 } // namespace WebCore
