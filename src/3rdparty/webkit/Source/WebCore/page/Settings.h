@@ -352,6 +352,12 @@ namespace WebCore {
         
         void setTiledBackingStoreEnabled(bool);
         bool tiledBackingStoreEnabled() const { return m_tiledBackingStoreEnabled; }
+	
+        void setPrintingMinimumShrinkFactor(float);
+        float printingMinimumShrinkFactor() const { return m_printingMinimumShrinkFactor; }
+	
+        void setPrintingMaximumShrinkFactor(float);
+        float printingMaximumShrinkFactor() const { return m_printingMaximumShrinkFactor; }
 
         void setPaginateDuringLayoutEnabled(bool flag) { m_paginateDuringLayoutEnabled = flag; }
         bool paginateDuringLayoutEnabled() const { return m_paginateDuringLayoutEnabled; }
@@ -433,6 +439,8 @@ namespace WebCore {
         EditableLinkBehavior m_editableLinkBehavior;
         TextDirectionSubmenuInclusionBehavior m_textDirectionSubmenuInclusionBehavior;
         double m_passwordEchoDurationInSeconds;
+        float m_printingMinimumShrinkFactor;
+        float m_printingMaximumShrinkFactor;
         int m_minimumFontSize;
         int m_minimumLogicalFontSize;
         int m_defaultFontSize;
