@@ -87,6 +87,7 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
 
 Settings::Settings(Page* page)
     : m_page(page)
+    , m_printingMediaType("print")
     , m_editableLinkBehavior(EditableLinkDefaultBehavior)
     , m_textDirectionSubmenuInclusionBehavior(TextDirectionSubmenuAutomaticallyIncluded)
     , m_passwordEchoDurationInSeconds(1)
@@ -567,6 +568,11 @@ void Settings::setLocalStorageDatabasePath(const String& path)
 void Settings::setApplicationChromeMode(bool mode)
 {
     m_inApplicationChromeMode = mode;
+}
+
+void Settings::setPrintingMediaType(const String& type)
+{
+    m_printingMediaType = type;
 }
 
 void Settings::setOfflineWebApplicationCacheEnabled(bool enabled)
