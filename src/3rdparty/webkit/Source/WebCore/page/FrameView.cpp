@@ -1080,7 +1080,9 @@ void FrameView::adjustMediaTypeForPrinting(bool printing)
     if (printing) {
         if (m_mediaTypeWhenNotPrinting.isNull())
             m_mediaTypeWhenNotPrinting = mediaType();
-            setMediaType("print");
+
+        String mediaType = (m_frame && m_frame->settings())?m_frame->settings()->printingMediaType():"print";
+        setMediaType(mediaType);
     } else {
         if (!m_mediaTypeWhenNotPrinting.isNull())
             setMediaType(m_mediaTypeWhenNotPrinting);
