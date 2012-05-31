@@ -26,6 +26,7 @@
 #include "FrameView.h"
 #include "RenderLayer.h"
 #include "RenderView.h"
+#include "Settings.h"
 #include <wtf/text/StringConcatenate.h>
 
 namespace WebCore {
@@ -182,11 +183,21 @@ void PrintContext::begin(float width, float height)
     // This function can be called multiple times to adjust printing parameters without going back to screen mode.
     m_isPrinting = true;
 
-    float minLayoutWidth = width * printingMinimumShrinkFactor;
-    float minLayoutHeight = height * printingMinimumShrinkFactor;
+    float minimumShrinkFactor = m_frame->settings() ? 
+        m_frame->settings()->printingMinimumShrinkFactor() : 0.0f;
+    float maximumShrinkFactor = m_frame->settings() ? 
+        m_frame->settings()->printingMaximumShrinkFactor() : 0.0f;
+
+    if (maximumShrinkFactor < minimumShrinkFactor || minimumShrinkFactor <= 0.0f) {
+        minimumShrinkFactor = printingMinimumShrinkFactor;
+        maximumShrinkFactor = printingMaximumShrinkFactor;
+    }
+    
+    float minLayoutWidth = width * minimumShrinkFactor;
+    float minLayoutHeight = height * minimumShrinkFactor;
 
     // This changes layout, so callers need to make sure that they don't paint to screen while in printing mode.
-    m_frame->setPrinting(true, FloatSize(minLayoutWidth, minLayoutHeight), printingMaximumShrinkFactor / printingMinimumShrinkFactor, Frame::AdjustViewSize);
+    m_frame->setPrinting(true, FloatSize(minLayoutWidth, minLayoutHeight), maximumShrinkFactor / minimumShrinkFactor, Frame::AdjustViewSize);
 }
 
 float PrintContext::computeAutomaticScaleFactor(const FloatSize& availablePaperSize)
