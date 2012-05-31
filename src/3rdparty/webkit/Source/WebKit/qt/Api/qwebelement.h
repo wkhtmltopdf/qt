@@ -170,6 +170,7 @@ private:
     friend class QWebHitTestResult;
     friend class QWebHitTestResultPrivate;
     friend class QWebPage;
+    friend class QWebPrinter;
 
 #if defined(WTF_USE_V8) && WTF_USE_V8
     friend class V8::Bindings::QtWebElementRuntime;

@@ -35,6 +35,9 @@
 #include "wtf/RefPtr.h"
 #include "Frame.h"
 #include "ViewportArguments.h"
+#include <qpainter.h>
+#include "PrintContext.h"
+#include "GraphicsContext.h"
 
 #if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER)
 #include "texmap/TextureMapper.h"
@@ -67,6 +70,19 @@ public:
     bool allowsScrolling;
     int marginWidth;
     int marginHeight;
+};
+
+class QWebPrinterPrivate {
+public:
+    WebCore::PrintContext printContext;
+    QPainter & painter;
+    const QWebFrame * frame;
+    WebCore::GraphicsContext graphicsContext;
+    int printWidth;
+    QHash<const WebCore::Node*, const WebCore::RenderObject *> elementToRenderObject;
+    
+    QWebPrinterPrivate(const QWebFrame * frame, QPaintDevice *printer, QPainter &p);
+    ~QWebPrinterPrivate();
 };
 
 class QWebFramePrivate {
