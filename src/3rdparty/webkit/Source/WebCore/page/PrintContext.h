@@ -83,6 +83,8 @@ public:
     // (pageSizeInPixels.height() + 1) * number-of-pages - 1
     static void spoolAllPagesWithBoundaries(Frame*, GraphicsContext&, const FloatSize& pageSizeInPixels);
 
+public:
+    const Vector<IntRect> & getPageRects() const {return m_pageRects;}
 protected:
     Frame* m_frame;
     Vector<IntRect> m_pageRects;
