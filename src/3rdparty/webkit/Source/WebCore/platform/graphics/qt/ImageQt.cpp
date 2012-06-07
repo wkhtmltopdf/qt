@@ -41,6 +41,7 @@
 #include "PlatformString.h"
 #include "StillImageQt.h"
 #include "qwebsettings.h"
+#include "SharedBuffer.h"
 
 #include <QPixmap>
 #include <QPainter>
@@ -234,7 +235,8 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
         }
     }
 
-    ctxt->platformContext()->drawPixmap(normalizedDst, *image, normalizedSrc);
+    QByteArray a = QByteArray::fromRawData(data()->data(), data()->size());
+    ctxt->platformContext()->drawPixmap(normalizedDst, *image, normalizedSrc, &a);
 
     ctxt->setCompositeOperation(previousOperator);
 
