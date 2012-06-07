@@ -92,7 +92,12 @@ public:
     // reimplementations QPaintEngine
     bool begin(QPaintDevice *pdev);
     bool end();
-    void drawPixmap (const QRectF & rectangle, const QPixmap & pixmap, const QRectF & sr);
+
+    void drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr, const QByteArray * data=0);
+    void drawPixmap(const QRectF & rectangle, const QPixmap & pixmap, const QRectF & sr) {
+        drawPixmap(rectangle, pixmap, sr, 0);
+    }
+
     void drawImage(const QRectF &r, const QImage &pm, const QRectF &sr,
                    Qt::ImageConversionFlags flags = Qt::AutoColor);
     void drawTiledPixmap (const QRectF & rectangle, const QPixmap & pixmap, const QPointF & point);
@@ -181,7 +186,9 @@ public:
     void writeHeader();
     void writeTail();
 
-    int addImage(const QImage &image, bool *bitmap, qint64 serial_no);
+    void convertImage(const QImage & image, QByteArray & imageData);
+
+    int addImage(const QImage &image, bool *bitmap, qint64 serial_no, const QImage * noneScaled=0, const QByteArray * data=0, bool * useScaled=0);
     int addConstantAlphaObject(int brushAlpha, int penAlpha = 255);
     int addBrushPattern(const QTransform &matrix, bool *specifyColor, int *gStateObject);
 
@@ -206,7 +213,10 @@ private:
     QVector<int> xrefPositions;
     QDataStream* stream;
     int streampos;
+
     bool doCompress;
+    int imageDPI;
+    int imageQuality;
 
     int writeImage(const QByteArray &data, int width, int height, int depth,
                    int maskObject, int softMaskObject, bool dct = false);
