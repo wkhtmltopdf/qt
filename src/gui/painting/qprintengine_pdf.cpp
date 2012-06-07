@@ -106,16 +106,24 @@ inline QPaintEngine::PaintEngineFeatures qt_pdf_decide_features()
 
 void QPdfEngine::setProperty(PrintEnginePropertyKey key, const QVariant &value) {
     Q_D(QPdfEngine);
-    if (key==PKK_UseCompression)
+    if (key==PPK_UseCompression)
         d->doCompress = value.toBool();
-    else 
+    else if (key==PPK_ImageQuality)
+        d->imageQuality = value.toInt();
+    else if (key==PPK_ImageDPI)
+        d->imageDPI = value.toInt();
+    else
         QPdfBaseEngine::setProperty(key, value);
 }
 
 QVariant QPdfEngine::property(PrintEnginePropertyKey key) const {
     Q_D(const QPdfEngine);
-    if (key==PKK_UseCompression)
+    if (key==PPK_UseCompression)
         return d->doCompress;
+    else if (key==PPK_ImageQuality)
+        return d->imageQuality;
+    else if (key==PPK_ImageDPI)
+        return d->imageDPI;
     else
         return QPdfBaseEngine::property(key);
 }
@@ -305,7 +313,7 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     d->formFields.push_back(obj);
 }
 
-void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, const QRectF &sr)
+void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, const QRectF &sr, const QByteArray * data)
 {
     if (sr.isEmpty() || rectangle.isEmpty() || pixmap.isNull())
         return;
@@ -315,22 +323,35 @@ void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, con
 
     QRect sourceRect = sr.toRect();
     QPixmap pm = sourceRect != pixmap.rect() ? pixmap.copy(sourceRect) : pixmap;
-    QImage image = pm.toImage();
+    QImage unscaled = pm.toImage();
+    QImage image = unscaled;
+
+    QRectF a = d->stroker.matrix.mapRect(rectangle);
+    QRectF c = d->paperRect();
+    int maxWidth = int(a.width() / c.width() * d->width() / 72.0 * d->imageDPI);
+    int maxHeight = int(a.height() / c.height() * d->height() / 72.0 * d->imageDPI);
+    if (image.width() > maxWidth || image.height() > maxHeight)
+        image = unscaled.scaled( image.size().boundedTo( QSize(maxWidth, maxHeight) ), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+    bool useScaled=true;
     bool bitmap = true;
-    const int object = d->addImage(image, &bitmap, pm.cacheKey());
+    const int object = d->addImage(image, &bitmap, pm.cacheKey(), &unscaled, (sr == pixmap.rect()?data:0), &useScaled );
+    int width = useScaled?image.width():unscaled.width();
+    int height = useScaled?image.height():unscaled.height();
+
     if (object < 0)
         return;
 
     *d->currentPage << "q\n/GSa gs\n";
     *d->currentPage
-        << QPdf::generateMatrix(QTransform(rectangle.width() / sr.width(), 0, 0, rectangle.height() / sr.height(),
+        << QPdf::generateMatrix(QTransform(rectangle.width() / width, 0, 0, rectangle.height() / height,
                                            rectangle.x(), rectangle.y()) * (d->simplePen ? QTransform() : d->stroker.matrix));
     if (bitmap) {
         // set current pen as d->brush
         d->brush = d->pen.brush();
     }
     setBrush();
-    d->currentPage->streamImage(image.width(), image.height(), object);
+    d->currentPage->streamImage(width, height, object);
     *d->currentPage << "Q\n";
 
     d->brush = b;
@@ -441,6 +462,8 @@ QPdfEnginePrivate::QPdfEnginePrivate(QPrinter::PrinterMode m)
 {
     streampos = 0;
     doCompress = true;
+    imageDPI = 1400;
+    imageQuality = 94;
     stream = new QDataStream;
     pageOrder = QPrinter::FirstPageFirst;
     orientation = QPrinter::Portrait;
@@ -707,10 +730,113 @@ int QPdfEnginePrivate::addBrushPattern(const QTransform &m, bool *specifyColor, 
     return patternObj;
 }
 
+
+void QPdfEnginePrivate::convertImage(const QImage & image, QByteArray & imageData) {
+    int w = image.width();
+    int h = image.height();
+    imageData.resize(colorMode == QPrinter::GrayScale ? w * h : 3 * w * h);
+    uchar *data = (uchar *)imageData.data();
+    for (int y = 0; y < h; ++y) {
+        const QRgb *rgb = (const QRgb *)image.scanLine(y);
+        if (colorMode == QPrinter::GrayScale) {
+            for (int x = 0; x < w; ++x) {
+                *(data++) = qGray(*rgb);
+                ++rgb;
+            }
+        } else {
+            for (int x = 0; x < w; ++x) {
+                *(data++) = qRed(*rgb);
+                *(data++) = qGreen(*rgb);
+                *(data++) = qBlue(*rgb);
+                ++rgb;
+            }
+        }
+    }
+}
+
+#include <iostream>
+
+class jpg_header_reader {
+private:
+  const QByteArray * data;
+  int index;
+
+  class jpeg_exception {};
+
+  unsigned char next() {
+    if (index == data->size()) throw jpeg_exception();
+    return data->data()[index++];
+  }
+
+  void skip() {
+    int l = (next() << 8) + next();
+    if (l < 2) throw jpeg_exception();
+    for (int i=2; i < l; ++i) next();
+  }
+
+  void read_header() {
+    int l = (next() << 8) + next();
+    if (l < 2) throw jpeg_exception();
+    precision = next();
+    height = (next() << 8) + next();
+    width = (next() << 8) + next();
+    components = next();
+    if (l != 8 + components*3) throw jpeg_exception();
+  }
+
+public:
+  bool read(const QByteArray * d) {
+    index=0;
+    data=d;
+    try {
+      if (next() != 0xFF) throw jpeg_exception();
+      unsigned char marker = next();
+      if (marker != 0xD8) throw jpeg_exception();
+      while (true) {
+        marker = next();
+        while (marker != 0xFF) marker=next();
+        while (marker == 0xFF) marker=next();
+        switch(marker) {
+          case 0xC0:   // SOF0 Start Of Frame N - BaseLine
+          case 0xC1:   // SOF1 N indicates which compression process - Extended Sequential
+          case 0xC2:   // SOF2 Only SOF0-SOF2 are now in common use - Progressive
+          case 0xC3:   // SOF3 Lossless
+          case 0xC5:   // SOF5 Differential sequential
+          case 0xC6:   // SOF6 Differential progressive
+          case 0xC7:   // SOF7 Differential lossless
+          case 0xC9:   // SOF9 Extended sequential, arithmetic coding
+          case 0xCA:   // SOF10 Progressive, arithmetic coding
+          case 0xCB:   // SOF11 Lossless, arithmetic coding
+          case 0xCD:   // SOF13 Differential sequential, arithmetic coding
+          case 0xCE:   // SOF14 Differential progressive, arithmetic coding
+          case 0xCF:   // SOF15 Differential lossless, arithmetic coding
+          case 0xE1:   // EXIF/XMP Exif marker.  Also used for XMP data!
+            read_header();
+            return true;
+          case 0xDA:    // SOS Start Of Scan (begins compressed data)
+          case 0xD9:    // EOI End Of Image (end of datastream)
+            return false;
+          default:
+            skip();
+            break;
+          }
+        }
+    } catch(jpeg_exception) {
+      return false;
+    }
+    return true;
+  }
+
+  int precision, height, width, components;
+
+};
+
+
+
 /*!
  * Adds an image to the pdf and return the pdf-object id. Returns -1 if adding the image failed.
  */
-int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_no)
+int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_no, const QImage * noneScaled, const QByteArray * data, bool * useScaled)
 {
     if (img.isNull())
         return -1;
@@ -751,65 +877,100 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
         }
         object = writeImage(data, w, h, d, 0, 0);
     } else {
-        QByteArray softMaskData;
-        bool dct = false;
         QByteArray imageData;
+        uLongf target=1024*1024*1024;
+        bool uns=false;
+        bool dct = false;
+
+        d = (colorMode == QPrinter::GrayScale) ? 8 : 32;
+
+        if (QImageWriter::supportedImageFormats().contains("jpeg") && colorMode != QPrinter::GrayScale) {
+            QByteArray imageData2;
+
+            QBuffer buffer(&imageData2);
+            QImageWriter writer(&buffer, "jpeg");
+            writer.setQuality(imageQuality);
+            writer.write(image);
+
+            if ((uLongf)imageData2.size() < target) {
+                imageData=imageData2;
+                target = imageData2.size();
+                dct = true;
+                uns=false;
+            }
+        }
+
+        if (noneScaled && noneScaled->rect() != image.rect()) {
+            QByteArray imageData2;
+            if (noneScaled->format() != QImage::Format_RGB32 && noneScaled->format() != QImage::Format_ARGB32)
+                convertImage(noneScaled->convertToFormat(QImage::Format_ARGB32), imageData2);
+            else
+                convertImage(*noneScaled, imageData2);
+            uLongf len = imageData2.size();
+            uLongf destLen = len + len/100 + 13; // zlib requirement
+            Bytef* dest = new Bytef[destLen];
+            if (Z_OK == ::compress(dest, &destLen, (const Bytef*) imageData2.data(), (uLongf)len) &&
+                (uLongf)destLen < target) {
+                imageData=imageData2;
+                target=destLen;
+                dct=false;
+                uns=true;
+            }
+            delete[] dest;
+        }
+
+        {
+            QByteArray imageData2;
+            convertImage(image, imageData2);
+            uLongf len = imageData2.size();
+            uLongf destLen = len + len/100 + 13; // zlib requirement
+            Bytef* dest = new Bytef[destLen];
+            if (Z_OK == ::compress(dest, &destLen, (const Bytef*) imageData2.data(), (uLongf)len) &&
+                (uLongf)destLen < target) {
+                imageData=imageData2;
+                target=destLen;
+                dct=false;
+                uns=false;
+            }
+            delete[] dest;
+        }
+
+
+        if (colorMode != QPrinter::GrayScale && noneScaled != 0 && data != 0) {
+          jpg_header_reader header;
+          if (header.read(data)) {
+            d = header.components == 3?32:8;
+            imageData = *data;
+            target=data->size();
+            dct=true;
+            uns=true;
+          }
+        }
+
+        if (uns) {
+            w = noneScaled->width();
+            h = noneScaled->height();
+        }
+        if (useScaled) *useScaled = (uns?false:true);
+        QByteArray softMaskData;
         bool hasAlpha = false;
         bool hasMask = false;
 
-        if (QImageWriter::supportedImageFormats().contains("jpeg") && colorMode != QPrinter::GrayScale) {
-            QBuffer buffer(&imageData);
-            QImageWriter writer(&buffer, "jpeg");
-            writer.setQuality(94);
-            writer.write(image);
-            dct = true;
-
-            if (format != QImage::Format_RGB32) {
-                softMaskData.resize(w * h);
-                uchar *sdata = (uchar *)softMaskData.data();
-                for (int y = 0; y < h; ++y) {
-                    const QRgb *rgb = (const QRgb *)image.scanLine(y);
-                    for (int x = 0; x < w; ++x) {
-                        uchar alpha = qAlpha(*rgb);
-                        *sdata++ = alpha;
-                        hasMask |= (alpha < 255);
-                        hasAlpha |= (alpha != 0 && alpha != 255);
-                        ++rgb;
-                    }
-                }
-            }
-        } else {
-            imageData.resize(colorMode == QPrinter::GrayScale ? w * h : 3 * w * h);
-            uchar *data = (uchar *)imageData.data();
+        if (format != QImage::Format_RGB32) {
             softMaskData.resize(w * h);
             uchar *sdata = (uchar *)softMaskData.data();
             for (int y = 0; y < h; ++y) {
-                const QRgb *rgb = (const QRgb *)image.scanLine(y);
-                if (colorMode == QPrinter::GrayScale) {
-                    for (int x = 0; x < w; ++x) {
-                        *(data++) = qGray(*rgb);
-                        uchar alpha = qAlpha(*rgb);
-                        *sdata++ = alpha;
-                        hasMask |= (alpha < 255);
-                        hasAlpha |= (alpha != 0 && alpha != 255);
-                        ++rgb;
-                    }
-                } else {
-                    for (int x = 0; x < w; ++x) {
-                        *(data++) = qRed(*rgb);
-                        *(data++) = qGreen(*rgb);
-                        *(data++) = qBlue(*rgb);
-                        uchar alpha = qAlpha(*rgb);
-                        *sdata++ = alpha;
-                        hasMask |= (alpha < 255);
-                        hasAlpha |= (alpha != 0 && alpha != 255);
-                        ++rgb;
-                    }
+                const QRgb *rgb = (const QRgb *)(uns?noneScaled->scanLine(y):image.scanLine(y));
+                for (int x = 0; x < w; ++x) {
+                    uchar alpha = qAlpha(*rgb);
+                    *sdata++ = alpha;
+                    hasMask |= (alpha < 255);
+                    hasAlpha |= (alpha != 0 && alpha != 255);
+                    ++rgb;
                 }
             }
-            if (format == QImage::Format_RGB32)
-                hasAlpha = hasMask = false;
         }
+
         int maskObject = 0;
         int softMaskObject = 0;
         if (hasAlpha) {
@@ -831,7 +992,7 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
             }
             maskObject = writeImage(mask, w, h, 1, 0, 0);
         }
-        object = writeImage(imageData, w, h, colorMode == QPrinter::GrayScale ? 8 : 32,
+        object = writeImage(imageData, w, h, d,
                             maskObject, softMaskObject, dct);
     }
     imageCache.insert(serial_no, object);
