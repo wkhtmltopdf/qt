@@ -191,6 +191,10 @@ public:
     virtual void drawPolygon(const QPoint *points, int pointCount, PolygonDrawMode mode);
 
     virtual void drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr) = 0;
+    virtual void drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr, const QByteArray * data) {
+		Q_UNUSED(data);
+		drawPixmap(r,pm,sr);
+	}
     virtual void drawTextItem(const QPointF &p, const QTextItem &textItem);
     virtual void drawTiledPixmap(const QRectF &r, const QPixmap &pixmap, const QPointF &s);
     virtual void drawImage(const QRectF &r, const QImage &pm, const QRectF &sr,
