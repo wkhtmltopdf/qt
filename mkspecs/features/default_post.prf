@@ -25,7 +25,7 @@ breakpad {
     win32 {
         TARGET_BASEPATH ~= s,/,\\,
         contains(TEMPLATE, .*lib) {
-            isEmpty(TARGET_VERSION_EXT):!isEmpty(VERSION) {
+            !skip_target_version_ext:isEmpty(TARGET_VERSION_EXT):!isEmpty(VERSION) {
                 TARGET_VERSION_EXT = $$section(VERSION, ., 0, 0)
                 isEqual(TARGET_VERSION_EXT, 0):unset(TARGET_VERSION_EXT)
             }
