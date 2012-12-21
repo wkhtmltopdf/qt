@@ -1,26 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -37,7 +37,7 @@
 
     Since the introduction of Qt Quick (Qt UI Creation Kit) in the beginning of 2011, Qt has been supporting script-based declarative programming with QML. QML is very easy to understand for anybody who is familiar with JavaScript as well as for all other developers who are familiar the basics of object oriented programming and have worked with other scripting languages. Designers who are familiar with web development can start with QML and implement their ideas in executable code which can later be powered by more application logic developed by engineering teams.
 
-    A solid understanding of the basics of C++ is essential for those planning on using Qt for C++. You do not need to be a C++ expert to begin. Qt simplifies many aspects of C++ development, making it a lot of fun. The overall development effort is minimal since Qt API are easy to understand and application functionality can be implemented with a smaller a mount of code. C++ experts will find a lot of powerful APIs and tools in Qt which will make complicated things simple and new features easy to get done.
+    A solid understanding of the basics of C++ is essential for those planning on using Qt for C++. You do not need to be a C++ expert to begin. Qt simplifies many aspects of C++ development, making it a lot of fun. The overall development effort is minimal since Qt API are easy to understand and application functionality can be implemented with a smaller amount of code. C++ experts will find a lot of powerful APIs and tools in Qt which will make complicated things simple and new features easy to get done.
 
     Various bindings have been developed by the Qt community for other programming languages. See the \l{Qt Language Bindings on Wiki}{this wiki page on Qt Developer Network} for more information about using other programming languages with Qt.
 
@@ -159,10 +159,6 @@
     \endlist
 
     In addition, many Qt developers are active members of the \l{KDE}{KDE community}.
-
-    \section1 Books about Qt
-
-    There is a growing number of books about Qt programming. The Qt team maintains a list of books on the Qt Developer Network site. See \l{Books about Qt Programming} for a complete list of Qt books including translations to various languages.
 
     \section1 Training
 

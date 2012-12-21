@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -99,6 +99,7 @@ private slots:
     void defaultAndAutoDefault();
     void sizeHint_data();
     void sizeHint();
+    void taskQTBUG_20191_shortcutWithKeypadModifer();
 /*
     void state();
     void group();
@@ -700,6 +701,52 @@ void tst_QPushButton::sizeHint()
 
         QCOMPARE(button1_2->size(), button2_2->size());
     }
+}
+
+void tst_QPushButton::taskQTBUG_20191_shortcutWithKeypadModifer()
+{
+    // setup a dialog with two buttons
+    QPushButton *button1 = new QPushButton("5");
+    QPushButton *button2 = new QPushButton("5 + KeypadModifier");
+    QVBoxLayout *layout = new QVBoxLayout();
+    layout->addWidget(button1);
+    layout->addWidget(button2);
+    QDialog dialog;
+    dialog.setLayout(layout);
+    dialog.show();
+    QTest::qWaitForWindowShown(&dialog);
+    QApplication::setActiveWindow(&dialog);
+
+    // add shortcut '5' to button1 and test with keyboard and keypad '5' keys
+    QSignalSpy spy1(button1, SIGNAL(clicked()));
+    button1->setShortcut(Qt::Key_5);
+    QTest::keyClick(&dialog, Qt::Key_5);
+    QTest::qWait(300);
+    QTest::keyClick(&dialog, Qt::Key_5, Qt::KeypadModifier);
+    QTest::qWait(300);
+    QCOMPARE(spy1.count(), 2);
+
+    // add shortcut 'keypad 5' to button2
+    spy1.clear();
+    QSignalSpy spy2(button2, SIGNAL(clicked()));
+    button2->setShortcut(Qt::Key_5 + Qt::KeypadModifier);
+    QTest::keyClick(&dialog, Qt::Key_5);
+    QTest::qWait(300);
+    QTest::keyClick(&dialog, Qt::Key_5, Qt::KeypadModifier);
+    QTest::qWait(300);
+    QCOMPARE(spy1.count(), 1);
+    QCOMPARE(spy2.count(), 1);
+
+    // remove shortcut from button1
+    spy1.clear();
+    spy2.clear();
+    button1->setShortcut(QKeySequence());
+    QTest::keyClick(&dialog, Qt::Key_5);
+    QTest::qWait(300);
+    QTest::keyClick(&dialog, Qt::Key_5, Qt::KeypadModifier);
+    QTest::qWait(300);
+    QCOMPARE(spy1.count(), 0);
+    QCOMPARE(spy2.count(), 1);
 }
 
 QTEST_MAIN(tst_QPushButton)

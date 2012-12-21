@@ -1,46 +1,46 @@
 #!/usr/bin/env python
 #############################################################################
 ##
-## Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-## All rights reserved.
-## Contact: Nokia Corporation (qt-info@nokia.com)
+## Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+## Contact: http://www.qt-project.org/legal
 ##
 ## This file is part of the test suite of the Qt Toolkit.
 ##
 ## $QT_BEGIN_LICENSE:LGPL$
-## GNU Lesser General Public License Usage
-## This file may be used under the terms of the GNU Lesser General Public
-## License version 2.1 as published by the Free Software Foundation and
-## appearing in the file LICENSE.LGPL included in the packaging of this
-## file. Please review the following information to ensure the GNU Lesser
-## General Public License version 2.1 requirements will be met:
-## http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+## Commercial License Usage
+## Licensees holding valid commercial Qt licenses may use this file in
+## accordance with the commercial license agreement provided with the
+## Software or, alternatively, in accordance with the terms contained in
+## a written agreement between you and Digia.  For licensing terms and
+## conditions see http://qt.digia.com/licensing.  For further information
+## use the contact form at http://qt.digia.com/contact-us.
 ##
-## In addition, as a special exception, Nokia gives you certain additional
-## rights. These rights are described in the Nokia Qt LGPL Exception
+## GNU Lesser General Public License Usage
+## Alternatively, this file may be used under the terms of the GNU Lesser
+## General Public License version 2.1 as published by the Free Software
+## Foundation and appearing in the file LICENSE.LGPL included in the
+## packaging of this file.  Please review the following information to
+## ensure the GNU Lesser General Public License version 2.1 requirements
+## will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+##
+## In addition, as a special exception, Digia gives you certain additional
+## rights.  These rights are described in the Digia Qt LGPL Exception
 ## version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 ##
 ## GNU General Public License Usage
-## Alternatively, this file may be used under the terms of the GNU General
-## Public License version 3.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of this
-## file. Please review the following information to ensure the GNU General
-## Public License version 3.0 requirements will be met:
-## http://www.gnu.org/copyleft/gpl.html.
-##
-## Other Usage
-## Alternatively, this file may be used in accordance with the terms and
-## conditions contained in a signed written agreement between you and Nokia.
-##
-##
-##
+## Alternatively, this file may be used under the terms of the GNU
+## General Public License version 3.0 as published by the Free Software
+## Foundation and appearing in the file LICENSE.GPL included in the
+## packaging of this file.  Please review the following information to
+## ensure the GNU General Public License version 3.0 requirements will be
+## met: http://www.gnu.org/copyleft/gpl.html.
 ##
 ##
 ## $QT_END_LICENSE$
 ##
 #############################################################################
 
-# langugae_list and country_list reflect the current values of enums in qlocale.h
+# language_list and country_list reflect the current values of enums in qlocale.h
 # If new xml language files are available in CLDR, these languages and countries
 # need to be *appended* to this list.
 
@@ -113,7 +113,7 @@ language_list = {
     65 : [ "Kirghiz",             "ky" ],
     66 : [ "Korean",              "ko" ],
     67 : [ "Kurdish",             "ku" ],
-    68 : [ "Kurundi",             "rn" ],
+    68 : [ "Rundi",               "rn" ],
     69 : [ "Laothian",            "lo" ],
     70 : [ "Latin",               "la" ],
     71 : [ "Latvian",             "lv" ],
@@ -126,7 +126,7 @@ language_list = {
     78 : [ "Maltese",             "mt" ],
     79 : [ "Maori",               "mi" ],
     80 : [ "Marathi",             "mr" ],
-    81 : [ "Moldavian",           "mo" ],
+    81 : [ "Moldavian",           "mo" ], # deprecated (alias to "ro_MD")
     82 : [ "Mongolian",           "mn" ],
     83 : [ "Nauru",       "na" ],
     84 : [ "Nepali",              "ne" ],
@@ -146,7 +146,7 @@ language_list = {
     98 : [ "Sangho",              "sg" ],
     99 : [ "Sanskrit",            "sa" ],
     100 : [ "Serbian",            "sr" ],
-    101 : [ "SerboCroatian",      "sh" ],
+    101 : [ "SerboCroatian",      "sh" ], # legacy (alias to "sr_Latn")
     102 : [ "Sesotho",            "st" ],
     103 : [ "Setswana",           "tn" ],
     104 : [ "Shona",              "sn" ],
@@ -160,7 +160,7 @@ language_list = {
     112 : [ "Sundanese",          "su" ],
     113 : [ "Swahili",            "sw" ],
     114 : [ "Swedish",            "sv" ],
-    115 : [ "Tagalog",            "tl" ],
+    115 : [ "Tagalog",            "tl" ], # legacy (alias to "fil")
     116 : [ "Tajik",              "tg" ],
     117 : [ "Tamil",              "ta" ],
     118 : [ "Tatar",              "tt" ],
@@ -172,7 +172,7 @@ language_list = {
     124 : [ "Tsonga",             "ts" ],
     125 : [ "Turkish",            "tr" ],
     126 : [ "Turkmen",            "tk" ],
-    127 : [ "Twi",                "tw" ],
+    127 : [ "Twi",                "tw" ], # should be an alias to Akan
     128 : [ "Uigur",              "ug" ],
     129 : [ "Ukrainian",          "uk" ],
     130 : [ "Urdu",               "ur" ],
@@ -259,7 +259,27 @@ language_list = {
     211 : [ "Chiga",              "cgg" ],
     212 : [ "Central Morocco Tamazight", "tzm" ],
     213 : [ "Koyraboro Senni",    "ses" ],
-    214 : [ "Shambala",           "ksb" ]
+    214 : [ "Shambala",           "ksb" ],
+    215 : [ "Bodo",               "brx" ],
+    216 : [ "Aghem",              "agq" ],
+    217 : [ "Basaa",              "bas" ],
+    218 : [ "Zarma",              "dje" ],
+    219 : [ "Duala",              "dua" ],
+    220 : [ "JolaFonyi",          "dyo" ],
+    221 : [ "Ewondo",             "ewo" ],
+    222 : [ "Bafia",              "ksf" ],
+    223 : [ "LubaKatanga",        "lu" ],
+    224 : [ "MakhuwaMeetto",      "mgh" ],
+    225 : [ "Mundang",            "mua" ],
+    226 : [ "Kwasio",             "nmg" ],
+    227 : [ "Nuer",               "nus" ],
+    228 : [ "Sakha",              "sah" ],
+    229 : [ "Sangu",              "sbp" ],
+    230 : [ "Congo Swahili",      "swc" ],
+    231 : [ "Tasawaq",            "twq" ],
+    232 : [ "Vai",                "vai" ],
+    233 : [ "Walser",             "wae" ],
+    234 : [ "Yangben",            "yav" ]
 }
 
 country_list = {

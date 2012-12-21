@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -78,7 +78,7 @@ private:
 };
 
 tst_Headers::tst_Headers() :
-    copyrightPattern("\\*\\* Copyright \\(C\\) 20[0-9][0-9] Nokia Corporation and/or its subsidiary\\(-ies\\)."),
+    copyrightPattern("\\*\\* Copyright \\(C\\) 20[0-9][0-9] .*"),
     licensePattern("\\*\\* \\$QT_BEGIN_LICENSE:(LGPL|BSD|3RDPARTY|LGPL-ONLY|FDL)\\$"),
     moduleTest(QLatin1String("\\*\\* This file is part of the .+ of the Qt Toolkit."))
 {
@@ -232,7 +232,11 @@ void tst_Headers::licenseCheck()
         return;
     }
 
+    // Compare the licensePattern ($QT_BEGIN_LICENSE:(LGPL|BSD|3RDPARTY|LGPL-ONLY|FDL)) pattern
+    // with the file under test. This pattern can be found in either lines 5, 7 or 8 of the
+    // license header
     QVERIFY(licensePattern.exactMatch(content.value(8)) ||
+            licensePattern.exactMatch(content.value(7)) ||
             licensePattern.exactMatch(content.value(5)));
     QString licenseType = licensePattern.cap(1);
 
@@ -241,21 +245,20 @@ void tst_Headers::licenseCheck()
     QCOMPARE(content.at(i++), QString("/****************************************************************************"));
     if (licenseType != "3RDPARTY") {
         QCOMPARE(content.at(i++), QString("**"));
-        if (sourceFile.endsWith("/tests/auto/modeltest/dynamictreemodel.cpp")
-            || sourceFile.endsWith("/tests/auto/modeltest/dynamictreemodel.h")
-            || sourceFile.endsWith("/src/gui/itemviews/qidentityproxymodel.h")
+        if (sourceFile.endsWith("/doc/src/snippets/code/src_gui_itemviews_qidentityproxymodel.cpp")
             || sourceFile.endsWith("/src/gui/itemviews/qidentityproxymodel.cpp")
-            || sourceFile.endsWith("/doc/src/snippets/code/src_gui_itemviews_qidentityproxymodel.cpp")
-            || sourceFile.endsWith("/tests/auto/qidentityproxymodel/tst_qidentityproxymodel.cpp")
-            || sourceFile.endsWith("/src/network/kernel/qnetworkproxy_p.h"))
+            || sourceFile.endsWith("/src/gui/itemviews/qidentityproxymodel.h")
+            || sourceFile.endsWith("/src/network/kernel/qnetworkproxy_p.h")
+            || sourceFile.endsWith("/tests/auto/modeltest/dynamictreemodel.cpp")
+            || sourceFile.endsWith("/tests/auto/modeltest/dynamictreemodel.h")
+            || sourceFile.endsWith("/tests/auto/qidentityproxymodel/tst_qidentityproxymodel.cpp"))
         {
             // These files are not copyrighted by Nokia.
             ++i;
         } else {
             QVERIFY(copyrightPattern.exactMatch(content.at(i++)));
         }
-        i++;
-        QCOMPARE(content.at(i++), QString("** Contact: Nokia Corporation (qt-info@nokia.com)"));
+        QCOMPARE(content.at(i++), QString("** Contact: http://www.qt-project.org/legal"));
     }
     QCOMPARE(content.at(i++), QString("**"));
     QVERIFY(moduleTest.exactMatch(content.at(i++)));

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -281,7 +281,7 @@ void tst_QHostInfo::lookupIPv4_data()
     QTest::newRow("multiple_ip4") << "multi.dev.troll.no" << "1.2.3.4 1.2.3.5 10.3.3.31" << int(QHostInfo::NoError);
     QTest::newRow("literal_ip4") << lupinellaIp << lupinellaIp << int(QHostInfo::NoError);
 
-    QTest::newRow("notfound") << "this-name-does-not-exist-hopefully." << "" << int(QHostInfo::HostNotFound);
+    QTest::newRow("notfound") << "this-name-does-not-exist-hopefully.invalid" << "" << int(QHostInfo::HostNotFound);
 
     QTest::newRow("idn-ace") << "xn--alqualond-34a.troll.no" << "10.3.3.55" << int(QHostInfo::NoError);
     QTest::newRow("idn-unicode") << QString::fromLatin1("alqualond\353.troll.no") << "10.3.3.55" << int(QHostInfo::NoError);
@@ -369,7 +369,7 @@ void tst_QHostInfo::reverseLookup_data()
     QTest::addColumn<QStringList>("hostNames");
     QTest::addColumn<int>("err");
 
-    QTest::newRow("trolltech.com") << QString("62.70.27.69") << QStringList(QString("diverse.troll.no")) << 0;
+    QTest::newRow("qt-project.org") << QString("87.238.53.172") << QStringList(QString("tufsla.qtproject.c.bitbit.net")) << 0;
 
     // ### Use internal DNS instead. Discussed with Andreas.
     //QTest::newRow("classical.hexago.com") << QString("2001:5c0:0:2::24") << QStringList(QString("classical.hexago.com")) << 0;
@@ -446,10 +446,10 @@ class LookupThread : public QThread
 protected:
     inline void run()
     {
-         QHostInfo info = QHostInfo::fromName("qt.nokia.com");
+         QHostInfo info = QHostInfo::fromName("qt-project.org");
          QCOMPARE(info.error(), QHostInfo::NoError);
          QVERIFY(info.addresses().count() > 0);
-         QCOMPARE(info.addresses().at(0).toString(), QString("87.238.50.178"));
+         QCOMPARE(info.addresses().at(0).toString(), QString("87.238.53.172"));
     }
 };
 
@@ -484,7 +484,7 @@ public:
 void LookupReceiver::start()
 {
     for (int i=0;i<numrequests;i++)
-        QHostInfo::lookupHost(QString("qt.nokia.com"), this, SLOT(resultsReady(const QHostInfo&)));
+        QHostInfo::lookupHost(QString("qt-project.org"), this, SLOT(resultsReady(const QHostInfo&)));
 }
 
 void LookupReceiver::resultsReady(const QHostInfo &info)
@@ -515,7 +515,7 @@ void tst_QHostInfo::threadSafetyAsynchronousAPI()
         QVERIFY(threads.at(k)->wait(60000));
     foreach (LookupReceiver* receiver, receivers) {
         QCOMPARE(receiver->result.error(), QHostInfo::NoError);
-        QCOMPARE(receiver->result.addresses().at(0).toString(), QString("87.238.50.178"));
+        QCOMPARE(receiver->result.addresses().at(0).toString(), QString("87.238.53.172"));
         QCOMPARE(receiver->numrequests, 0);
     }
 }
@@ -552,7 +552,7 @@ void tst_QHostInfo::multipleDifferentLookups_data()
 void tst_QHostInfo::multipleDifferentLookups()
 {
     QStringList hostnameList;
-    hostnameList << "www.ovi.com" << "www.nokia.com" << "qt.nokia.com" << "www.trolltech.com" << "troll.no"
+    hostnameList << "www.ovi.com" << "www.nokia.com" << "qt-project.org" << "www.trolltech.com" << "troll.no"
             << "www.qtcentre.org" << "forum.nokia.com" << "www.nokia.com" << "wiki.forum.nokia.com"
             << "www.nokia.com" << "nokia.de" << "127.0.0.1" << "----";
 
@@ -626,7 +626,7 @@ void tst_QHostInfo::abortHostLookup()
     lookupsDoneCounter = 0;
     bool valid = false;
     int id = -1;
-    QHostInfo result = qt_qhostinfo_lookup("qt.nokia.com", this, SLOT(resultsReady(QHostInfo)), &valid, &id);
+    QHostInfo result = qt_qhostinfo_lookup("qt-project.org", this, SLOT(resultsReady(QHostInfo)), &valid, &id);
     QVERIFY(!valid);
     //it is assumed that the DNS request/response in the backend is slower than it takes to call abort
     QHostInfo::abortHostLookup(id);
@@ -653,7 +653,7 @@ void tst_QHostInfo::abortHostLookupInDifferentThread()
     lookupsDoneCounter = 0;
     bool valid = false;
     int id = -1;
-    QHostInfo result = qt_qhostinfo_lookup("qt.nokia.com", this, SLOT(resultsReady(QHostInfo)), &valid, &id);
+    QHostInfo result = qt_qhostinfo_lookup("qt-project.org", this, SLOT(resultsReady(QHostInfo)), &valid, &id);
     QVERIFY(!valid);
     QThread thread;
     LookupAborter aborter;

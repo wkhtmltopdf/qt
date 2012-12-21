@@ -1,39 +1,39 @@
 #!/usr/bin/env python
 #############################################################################
 ##
-## Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-## All rights reserved.
-## Contact: Nokia Corporation (qt-info@nokia.com)
+## Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+## Contact: http://www.qt-project.org/legal
 ##
 ## This file is part of the test suite of the Qt Toolkit.
 ##
 ## $QT_BEGIN_LICENSE:LGPL$
-## GNU Lesser General Public License Usage
-## This file may be used under the terms of the GNU Lesser General Public
-## License version 2.1 as published by the Free Software Foundation and
-## appearing in the file LICENSE.LGPL included in the packaging of this
-## file. Please review the following information to ensure the GNU Lesser
-## General Public License version 2.1 requirements will be met:
-## http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+## Commercial License Usage
+## Licensees holding valid commercial Qt licenses may use this file in
+## accordance with the commercial license agreement provided with the
+## Software or, alternatively, in accordance with the terms contained in
+## a written agreement between you and Digia.  For licensing terms and
+## conditions see http://qt.digia.com/licensing.  For further information
+## use the contact form at http://qt.digia.com/contact-us.
 ##
-## In addition, as a special exception, Nokia gives you certain additional
-## rights. These rights are described in the Nokia Qt LGPL Exception
+## GNU Lesser General Public License Usage
+## Alternatively, this file may be used under the terms of the GNU Lesser
+## General Public License version 2.1 as published by the Free Software
+## Foundation and appearing in the file LICENSE.LGPL included in the
+## packaging of this file.  Please review the following information to
+## ensure the GNU Lesser General Public License version 2.1 requirements
+## will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+##
+## In addition, as a special exception, Digia gives you certain additional
+## rights.  These rights are described in the Digia Qt LGPL Exception
 ## version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 ##
 ## GNU General Public License Usage
-## Alternatively, this file may be used under the terms of the GNU General
-## Public License version 3.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of this
-## file. Please review the following information to ensure the GNU General
-## Public License version 3.0 requirements will be met:
-## http://www.gnu.org/copyleft/gpl.html.
-##
-## Other Usage
-## Alternatively, this file may be used in accordance with the terms and
-## conditions contained in a signed written agreement between you and Nokia.
-##
-##
-##
+## Alternatively, this file may be used under the terms of the GNU
+## General Public License version 3.0 as published by the Free Software
+## Foundation and appearing in the file LICENSE.GPL included in the
+## packaging of this file.  Please review the following information to
+## ensure the GNU General Public License version 3.0 requirements will be
+## met: http://www.gnu.org/copyleft/gpl.html.
 ##
 ##
 ## $QT_END_LICENSE$
@@ -136,13 +136,13 @@ def generateLocaleInfo(path):
 
     language_id = enumdata.languageCodeToId(language_code)
     if language_id == -1:
-        sys.stderr.write("unnknown language code \"" + language_code + "\"\n")
+        sys.stderr.write("unknown language code \"" + language_code + "\"\n")
         return {}
     language = enumdata.language_list[language_id][0]
 
     script_id = enumdata.scriptCodeToId(script_code)
     if script_code == -1:
-        sys.stderr.write("unnknown script code \"" + script_code + "\"\n")
+        sys.stderr.write("unknown script code \"" + script_code + "\"\n")
         return {}
     script = "AnyScript"
     if script_id != -1:
@@ -153,7 +153,7 @@ def generateLocaleInfo(path):
     if country_id != -1:
         country = enumdata.country_list[country_id][0]
     if country == "":
-        sys.stderr.write("unnknown country code \"" + country_code + "\"\n")
+        sys.stderr.write("unknown country code \"" + country_code + "\"\n")
         return {}
 
     # So we say we accept only those values that have "contributed" or
@@ -209,13 +209,33 @@ def generateLocaleInfo(path):
             try:
                 return findEntry(path, xpath + "[numberSystem=" + numbering_system + "]")
             except xpathlite.Error:
-                pass
+                # in CLDR 1.9 number system was refactored for numbers (but not for currency)
+                # so if previous findEntry doesn't work we should try this:
+                try:
+                    return findEntry(path, xpath.replace("/symbols/", "/symbols[numberSystem=" + numbering_system + "]/"))
+                except xpathlite.Error:
+                    # fallback to default
+                    pass
         return findEntry(path, xpath)
+
     result['decimal'] = get_number_in_system(path, "numbers/symbols/decimal", numbering_system)
     result['group'] = get_number_in_system(path, "numbers/symbols/group", numbering_system)
     result['list'] = get_number_in_system(path, "numbers/symbols/list", numbering_system)
     result['percent'] = get_number_in_system(path, "numbers/symbols/percentSign", numbering_system)
-    result['zero'] = get_number_in_system(path, "numbers/symbols/nativeZeroDigit", numbering_system)
+    try:
+        numbering_systems = {}
+        for ns in findTagsInFile(cldr_dir + "/../supplemental/numberingSystems.xml", "numberingSystems"):
+            tmp = {}
+            id = ""
+            for data in ns[1:][0]: # ns looks like this: [u'numberingSystem', [(u'digits', u'0123456789'), (u'type', u'numeric'), (u'id', u'latn')]]
+                tmp[data[0]] = data[1]
+                if data[0] == u"id":
+                    id = data[1]
+            numbering_systems[id] = tmp
+        result['zero'] = numbering_systems[numbering_system][u"digits"][0]
+    except e:
+        sys.stderr.write("Native zero detection problem:\n" + str(e) + "\n")
+        result['zero'] = get_number_in_system(path, "numbers/symbols/nativeZeroDigit", numbering_system)
     result['minus'] = get_number_in_system(path, "numbers/symbols/minusSign", numbering_system)
     result['plus'] = get_number_in_system(path, "numbers/symbols/plusSign", numbering_system)
     result['exp'] = get_number_in_system(path, "numbers/symbols/exponential", numbering_system).lower()

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -52,6 +52,7 @@ const QString test(qTableName("test", __FILE__)),
 //TESTED_FILES=
 
 Q_DECLARE_METATYPE(QModelIndex)
+Q_DECLARE_METATYPE(QSqlRecord)
 
 class tst_QSqlTableModel : public QObject
 {
@@ -522,6 +523,7 @@ void tst_QSqlTableModel::insertRow()
 
 void tst_QSqlTableModel::insertRecord()
 {
+    qRegisterMetaType<QSqlRecord>("QSqlRecord&");
     QFETCH(QString, dbName);
     QSqlDatabase db = QSqlDatabase::database(dbName);
     CHECK_DATABASE(db);
@@ -534,6 +536,7 @@ void tst_QSqlTableModel::insertRecord()
 
     QSqlRecord rec = model.record();
     rec.setValue(0, 42);
+    rec.setGenerated(0, false);
     rec.setValue(1, QString("vohi"));
     rec.setValue(2, 1);
     QVERIFY(model.insertRecord(1, rec));
@@ -543,7 +546,29 @@ void tst_QSqlTableModel::insertRecord()
     QCOMPARE(model.data(model.index(1, 1)).toString(), QString("vohi"));
     QCOMPARE(model.data(model.index(1, 2)).toInt(), 1);
 
+    QSignalSpy spy(&model, SIGNAL(beforeInsert(QSqlRecord&)));
+
+    // Don't care if the database accepts the change.
+    // Just check the generated flags.
+    model.submitAll();
+
+    QCOMPARE(spy.count(), 1);
+    QSqlRecord r = spy.at(0).at(0).value<QSqlRecord>();
+    QCOMPARE(r.count(), rec.count());
+    QCOMPARE(r.isGenerated(0), false);
+    QCOMPARE(r.value(0).toInt(), 42);
+    QCOMPARE(r.isGenerated(1), true);
+    QCOMPARE(r.value(1).toString(), QString("vohi"));
+
     model.revertAll();
+    // Clean up
+    if (model.rowCount() == 4) {
+        QVERIFY_SQL(model, removeRow(1));
+        QVERIFY_SQL(model, submitAll());
+    }
+    QCOMPARE(model.rowCount(), 3);
+
+    rec.setGenerated(0, true);
     model.setEditStrategy(QSqlTableModel::OnRowChange);
 
     QVERIFY(model.insertRecord(-1, rec));

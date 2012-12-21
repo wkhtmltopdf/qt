@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -97,21 +97,23 @@ QDeclarativeAbstractBoundSignal::~QDeclarativeAbstractBoundSignal()
 
 QDeclarativeBoundSignal::QDeclarativeBoundSignal(QObject *scope, const QMetaMethod &signal, 
                                QObject *parent)
-: m_expression(0), m_signal(signal), m_paramsValid(false), m_isEvaluating(false), m_params(0)
+: m_expression(0), m_signal(signal), m_paramsValid(false), m_isEvaluating(false), m_params(0),
+  m_scope(scope, this)
 {
-    // This is thread safe.  Although it may be updated by two threads, they
-    // will both set it to the same value - so the worst thing that can happen
-    // is that they both do the work to figure it out.  Boo hoo.
-    if (evaluateIdx == -1) evaluateIdx = metaObject()->methodCount();
-
-    QDeclarative_setParent_noEvent(this, parent);
-    QDeclarativePropertyPrivate::connect(scope, m_signal.methodIndex(), this, evaluateIdx);
+    init(parent);
 }
 
 QDeclarativeBoundSignal::QDeclarativeBoundSignal(QDeclarativeContext *ctxt, const QString &val, 
                                QObject *scope, const QMetaMethod &signal,
                                QObject *parent)
-: m_expression(0), m_signal(signal), m_paramsValid(false), m_isEvaluating(false), m_params(0)
+: m_expression(0), m_signal(signal), m_paramsValid(false), m_isEvaluating(false), m_params(0),
+  m_scope(scope, this)
+{
+    init(parent);
+    m_expression = new QDeclarativeExpression(ctxt, scope, val);
+}
+
+void QDeclarativeBoundSignal::init(QObject *parent)
 {
     // This is thread safe.  Although it may be updated by two threads, they
     // will both set it to the same value - so the worst thing that can happen
@@ -119,15 +121,26 @@ QDeclarativeBoundSignal::QDeclarativeBoundSignal(QDeclarativeContext *ctxt, cons
     if (evaluateIdx == -1) evaluateIdx = metaObject()->methodCount();
 
     QDeclarative_setParent_noEvent(this, parent);
-    QDeclarativePropertyPrivate::connect(scope, m_signal.methodIndex(), this, evaluateIdx);
+    QDeclarativePropertyPrivate::connect(m_scope, m_signal.methodIndex(), this, evaluateIdx);
 
-    m_expression = new QDeclarativeExpression(ctxt, scope, val);
+    QDeclarativeData * const data = QDeclarativeData::get(m_scope, true);
+    data->addBoundSignal(this);
 }
 
 QDeclarativeBoundSignal::~QDeclarativeBoundSignal()
 {
+    unregisterScopeObject();
     delete m_expression;
     m_expression = 0;
+}
+
+void QDeclarativeBoundSignal::disconnect()
+{
+    QMetaObject::disconnect(m_scope, m_signal.methodIndex(), this, evaluateIdx);
+    QObjectPrivate * const priv = QObjectPrivate::get(m_scope);
+    QVarLengthArray<char> signalSignature;
+    QObjectPrivate::signalSignature(m_signal, &signalSignature);
+    priv->disconnectNotify(signalSignature.constData());
 }
 
 int QDeclarativeBoundSignal::index() const 
@@ -193,6 +206,15 @@ int QDeclarativeBoundSignal::qt_metacall(QMetaObject::Call c, int id, void **a)
         return -1;
     } else {
         return QObject::qt_metacall(c, id, a);
+    }
+}
+
+void QDeclarativeBoundSignal::unregisterScopeObject()
+{
+    if (m_scope) {
+        QDeclarativeData * const data = QDeclarativeData::get(m_scope, false);
+        if (data)
+            data->removeBoundSignal(this);
     }
 }
 

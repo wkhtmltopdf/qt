@@ -1,36 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 - 2012 Research In Motion
-**
-** Contact: Research In Motion <blackberry-qt@qnx.com>
-** Contact: Klarälvdalens Datakonsult AB <info@kdab.com>
+** Copyright (C) 2011 - 2012 Research In Motion <blackberry-qt@qnx.com>
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -41,7 +43,7 @@
 
 #include "qbbintegration.h"
 #include "qbbinputcontext.h"
-#include "qbbeventthread.h"
+#include "qbbscreeneventthread.h"
 #include "qbbglcontext.h"
 #include "qbbglwindowsurface.h"
 #include "qbbnavigatoreventhandler.h"
@@ -50,14 +52,20 @@
 #include "qbbscreen.h"
 #include "qbbscreeneventhandler.h"
 #include "qbbwindow.h"
-#include "qbbvirtualkeyboard.h"
+#include "qbbvirtualkeyboardpps.h"
 #include "qgenericunixfontdatabase.h"
 #include "qbbclipboard.h"
 #include "qbbglcontext.h"
 #include "qbblocalethread.h"
 #include "qbbnativeinterface.h"
+#include "qbbbuttoneventnotifier.h"
+#if defined(Q_OS_BLACKBERRY)
+#include "qbbbpseventfilter.h"
+#include "qbbvirtualkeyboardbps.h"
+#endif
 
-#include "qapplication.h"
+#include <QtCore/QAbstractEventDispatcher>
+#include <QtGui/QApplication>
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <QtGui/QPlatformWindow>
 #include <QtGui/QWindowSystemInterface>
@@ -75,12 +83,15 @@ QT_BEGIN_NAMESPACE
 Q_DECLARE_METATYPE(screen_window_t);
 
 QBBIntegration::QBBIntegration() :
+    mScreenEventThread(0),
     mNavigatorEventHandler(new QBBNavigatorEventHandler()),
+    mButtonsNotifier(new QBBButtonEventNotifier()),
     mFontDb(new QGenericUnixFontDatabase()),
-    mScreenEventHandler(new QBBScreenEventHandler()),
+    mScreenEventHandler(new QBBScreenEventHandler(this)),
     mPaintUsingOpenGL(getenv("QBB_USE_OPENGL") != NULL),
     mVirtualKeyboard(0),
-    mNativeInterface(new QBBNativeInterface(this))
+    mNativeInterface(new QBBNativeInterface(this)),
+    mBpsEventFilter(0)
 {
     qRegisterMetaType<screen_window_t>();
 
@@ -102,18 +113,23 @@ QBBIntegration::QBBIntegration() :
     }
 
     // Create/start navigator event notifier
+    // Not on BlackBerry, it has specialised event dispatcher which also handles navigator events
+#if !defined(Q_OS_BLACKBERRY)
     mNavigatorEventNotifier = new QBBNavigatorEventNotifier(mNavigatorEventHandler);
 
     // delay invocation of start() to the time the event loop is up and running
     // needed to have the QThread internals of the main thread properly initialized
     QMetaObject::invokeMethod(mNavigatorEventNotifier, "start", Qt::QueuedConnection);
+#endif
 
     // Create displays for all possible screens (which may not be attached)
     createDisplays();
 
     // create/start event thread
-    mEventThread = new QBBEventThread(mContext, mScreenEventHandler);
-    mEventThread->start();
+#if defined(QBB_SCREENEVENTTHREAD)
+    mScreenEventThread = new QBBScreenEventThread(mContext, mScreenEventHandler);
+    mScreenEventThread->start();
+#endif
 
 #ifdef QBBLOCALETHREAD_ENABLED
     // Start the locale change monitoring thread.
@@ -123,14 +139,30 @@ QBBIntegration::QBBIntegration() :
 
 #if defined(Q_OS_BLACKBERRY)
     bps_initialize();
-#endif
 
+    QBBVirtualKeyboardBps *virtualKeyboardBps = new QBBVirtualKeyboardBps;
+
+    mBpsEventFilter = new QBBBpsEventFilter(mNavigatorEventHandler,
+            (mScreenEventThread ? 0 : mScreenEventHandler), virtualKeyboardBps);
+
+    if (!mScreenEventThread) {
+        Q_FOREACH (QPlatformScreen *platformScreen, mScreens) {
+            QBBScreen *screen = static_cast<QBBScreen*>(platformScreen);
+            mBpsEventFilter->registerForScreenEvents(screen);
+        }
+    }
+
+    mBpsEventFilter->installOnEventDispatcher(QAbstractEventDispatcher::instance());
+
+    mVirtualKeyboard = virtualKeyboardBps;
+#else
     // create/start the keyboard class.
-    mVirtualKeyboard = new QBBVirtualKeyboard();
+    mVirtualKeyboard = new QBBVirtualKeyboardPps();
 
     // delay invocation of start() to the time the event loop is up and running
     // needed to have the QThread internals of the main thread properly initialized
     QMetaObject::invokeMethod(mVirtualKeyboard, "start", Qt::QueuedConnection);
+#endif
 
     // TODO check if we need to do this for all screens or only the primary one
     QObject::connect(mVirtualKeyboard, SIGNAL(heightChanged(int)),
@@ -138,6 +170,10 @@ QBBIntegration::QBBIntegration() :
 
     // Set up the input context
     qApp->setInputContext(new QBBInputContext(*mVirtualKeyboard, qApp));
+
+    // delay invocation of start() to the time the event loop is up and running
+    // needed to have the QThread internals of the main thread properly initialized
+    QMetaObject::invokeMethod(mButtonsNotifier, "start", Qt::QueuedConnection);
 }
 
 QBBIntegration::~QBBIntegration()
@@ -145,25 +181,37 @@ QBBIntegration::~QBBIntegration()
 #if defined(QBBINTEGRATION_DEBUG)
     qDebug() << "QBB: platform plugin shutdown begin";
 #endif
-
-
     delete mNativeInterface;
 
-    // destroy the keyboard class.
-    delete mVirtualKeyboard;
+    // Destroy the hardware button notifier
+    delete mButtonsNotifier;
 
 #ifdef QBBLOCALETHREAD_ENABLED
     // stop/destroy the locale thread.
     delete mLocaleThread;
 #endif
 
+#if defined(QBB_SCREENEVENTTHREAD)
     // stop/destroy event thread
-    delete mEventThread;
+    delete mScreenEventThread;
+#elif defined(Q_OS_BLACKBERRY)
+    Q_FOREACH (QPlatformScreen *platformScreen, mScreens) {
+        QBBScreen *screen = static_cast<QBBScreen*>(platformScreen);
+        mBpsEventFilter->unregisterForScreenEvents(screen);
+    }
+#endif
 
+#if defined(Q_OS_BLACKBERRY)
+    delete mBpsEventFilter;
+#else
     // stop/destroy navigator event handling classes
     delete mNavigatorEventNotifier;
-    delete mNavigatorEventHandler;
+#endif
 
+    // destroy the keyboard class.
+    delete mVirtualKeyboard;
+
+    delete mNavigatorEventHandler;
     delete mScreenEventHandler;
 
     // destroy all displays
@@ -283,7 +331,7 @@ QBBScreen *QBBIntegration::primaryDisplay() const
 
 void QBBIntegration::setCursorPos(int x, int y)
 {
-    mEventThread->injectPointerMoveEvent(x, y);
+    mScreenEventThread->injectPointerMoveEvent(x, y);
 }
 
 void QBBIntegration::createDisplays()
@@ -303,25 +351,58 @@ void QBBIntegration::createDisplays()
         qFatal("QBBIntegration: failed to query displays, errno=%d", errno);
 
     for (int i=0; i<displayCount; i++) {
-#if defined(QBBINTEGRATION_DEBUG)
-        qDebug() << "QBBIntegration: Creating screen for display " << i;
-#endif
-        QBBScreen *screen = new QBBScreen(mContext, displays[i], i);
-        mScreens.push_back(screen);
+        int isAttached = 0;
+        result = screen_get_display_property_iv(displays[i], SCREEN_PROPERTY_ATTACHED, &isAttached);
+        if (result != 0) {
+            qWarning("QBBIntegration: failed to query display attachment, errno=%d", errno);
+            isAttached = 1; // assume attached
+        }
 
-        QObject::connect(mScreenEventHandler, SIGNAL(newWindowCreated(screen_window_t)),
-                         screen, SLOT(newWindowCreated(screen_window_t)));
-        QObject::connect(mScreenEventHandler, SIGNAL(windowClosed(screen_window_t)),
-                         screen, SLOT(windowClosed(screen_window_t)));
+        if (!isAttached)
+            continue;
 
-        QObject::connect(mNavigatorEventHandler, SIGNAL(rotationChanged(int)), screen, SLOT(setRotation(int)));
-    }
+        createDisplay(displays[i], i);
+    } // of displays iteration
+}
+
+void QBBIntegration::createDisplay(screen_display_t display, int screenIndex)
+{
+    QBBScreen *screen = new QBBScreen(mContext, display, screenIndex);
+    mScreens.append(screen);
+
+    QObject::connect(mScreenEventHandler, SIGNAL(newWindowCreated(screen_window_t)),
+                  screen, SLOT(newWindowCreated(screen_window_t)));
+    QObject::connect(mScreenEventHandler, SIGNAL(windowClosed(screen_window_t)),
+                  screen, SLOT(windowClosed(screen_window_t)));
+
+    QObject::connect(mNavigatorEventHandler, SIGNAL(rotationChanged(int)), screen, SLOT(setRotation(int)));
+    QObject::connect(mNavigatorEventHandler, SIGNAL(windowGroupActivated(QByteArray)), screen, SLOT(activateWindowGroup(QByteArray)));
+    QObject::connect(mNavigatorEventHandler, SIGNAL(windowGroupDeactivated(QByteArray)), screen, SLOT(deactivateWindowGroup(QByteArray)));
+}
+
+void QBBIntegration::removeDisplay(QBBScreen *screen)
+{
+    Q_CHECK_PTR(screen);
+    Q_ASSERT(mScreens.contains(screen));
+    mScreens.removeAll(screen);
+    screen->deleteLater();
 }
 
 void QBBIntegration::destroyDisplays()
 {
     qDeleteAll(mScreens);
     mScreens.clear();
+}
+
+QBBScreen *QBBIntegration::screenForNative(screen_display_t nativeScreen) const
+{
+    Q_FOREACH (QPlatformScreen *screen, mScreens) {
+        QBBScreen *bbScreen = static_cast<QBBScreen*>(screen);
+        if (bbScreen->nativeDisplay() == nativeScreen)
+            return bbScreen;
+    }
+
+    return 0;
 }
 
 QT_END_NAMESPACE

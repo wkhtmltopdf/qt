@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -61,6 +61,9 @@ private slots:
     void rotation3d();
     void rotation3dArbitraryAxis_data();
     void rotation3dArbitraryAxis();
+
+private:
+    QString toString(QTransform const&);
 };
 
 
@@ -305,6 +308,15 @@ void tst_QGraphicsTransform::rotation3d()
     QVERIFY(transform2D(rotation).isIdentity());
 }
 
+QByteArray labelForTest(QVector3D const& axis, int angle) {
+    return QString("rotation of %1 on (%2, %3, %4)")
+        .arg(angle)
+        .arg(axis.x())
+        .arg(axis.y())
+        .arg(axis.z())
+        .toLatin1();
+}
+
 void tst_QGraphicsTransform::rotation3dArbitraryAxis_data()
 {
     QTest::addColumn<QVector3D>("axis");
@@ -317,11 +329,11 @@ void tst_QGraphicsTransform::rotation3dArbitraryAxis_data()
     QVector3D axis5 = QVector3D(0.01f, 0.01f, 0.01f);
 
     for (int angle = 0; angle <= 360; angle++) {
-        QTest::newRow("test rotation on (1, 1, 1)") << axis1 << qreal(angle);
-        QTest::newRow("test rotation on (2, -3, .5)") << axis2 << qreal(angle);
-        QTest::newRow("test rotation on (-2, 0, -.5)") << axis3 << qreal(angle);
-        QTest::newRow("test rotation on (.0001, .0001, .0001)") << axis4 << qreal(angle);
-        QTest::newRow("test rotation on (.01, .01, .01)") << axis5 << qreal(angle);
+        QTest::newRow(labelForTest(axis1, angle).constData()) << axis1 << qreal(angle);
+        QTest::newRow(labelForTest(axis2, angle).constData()) << axis2 << qreal(angle);
+        QTest::newRow(labelForTest(axis3, angle).constData()) << axis3 << qreal(angle);
+        QTest::newRow(labelForTest(axis4, angle).constData()) << axis4 << qreal(angle);
+        QTest::newRow(labelForTest(axis5, angle).constData()) << axis5 << qreal(angle);
     }
 }
 
@@ -347,7 +359,26 @@ void tst_QGraphicsTransform::rotation3dArbitraryAxis()
     exp.rotate(angle, axis);
     QTransform expected = exp.toTransform(1024.0f);
 
-    QVERIFY(fuzzyCompare(transform2D(rotation), expected));
+#if defined(MAY_HIT_QTBUG_20661)
+    // These failures possibly relate to the float vs qreal issue mentioned
+    // in the comment above fuzzyCompare().
+    if (sizeof(qreal) == sizeof(double)) {
+        QEXPECT_FAIL("rotation of 120 on (1, 1, 1)",                "QTBUG-20661", Abort);
+        QEXPECT_FAIL("rotation of 240 on (1, 1, 1)",                "QTBUG-20661", Abort);
+        QEXPECT_FAIL("rotation of 120 on (0.01, 0.01, 0.01)",       "QTBUG-20661", Abort);
+        QEXPECT_FAIL("rotation of 240 on (0.01, 0.01, 0.01)",       "QTBUG-20661", Abort);
+        QEXPECT_FAIL("rotation of 120 on (0.0001, 0.0001, 0.0001)", "QTBUG-20661", Abort);
+        QEXPECT_FAIL("rotation of 240 on (0.0001, 0.0001, 0.0001)", "QTBUG-20661", Abort);
+    }
+#endif
+
+    QTransform actual = transform2D(rotation);
+    QVERIFY2(fuzzyCompare(actual, expected), qPrintable(
+        QString("\nactual:   %1\n"
+                  "expected: %2")
+        .arg(toString(actual))
+        .arg(toString(expected))
+    ));
 
     // Check that "rotation" produces the 4x4 form of the 3x3 matrix.
     // i.e. third row and column are 0 0 1 0.
@@ -355,6 +386,21 @@ void tst_QGraphicsTransform::rotation3dArbitraryAxis()
     rotation.applyTo(&t);
     QMatrix4x4 r(expected);
     QVERIFY(qFuzzyCompare(t, r));
+}
+
+QString tst_QGraphicsTransform::toString(QTransform const& t)
+{
+    return QString("[ [ %1  %2   %3 ]; [ %4  %5  %6 ]; [ %7  %8  %9 ] ]")
+        .arg(t.m11())
+        .arg(t.m12())
+        .arg(t.m13())
+        .arg(t.m21())
+        .arg(t.m22())
+        .arg(t.m23())
+        .arg(t.m31())
+        .arg(t.m32())
+        .arg(t.m33())
+    ;
 }
 
 

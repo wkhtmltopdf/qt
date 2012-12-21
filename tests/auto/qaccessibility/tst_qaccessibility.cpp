@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -1553,6 +1553,7 @@ void tst_QAccessibility::text()
     // Accelerator
     QCOMPARE(acc_pbOk->text(QAccessible::Accelerator, 0), Q3Accel::keyToString(Qt::Key_Enter));
     QCOMPARE(acc_pb1->text(QAccessible::Accelerator, 0), Q3Accel::keyToString(Qt::ALT + Qt::Key_1));
+    QEXPECT_FAIL("", "QTBUG-26499", Abort);
     QCOMPARE(acc_lineedit->text(QAccessible::Accelerator, 0), Q3Accel::keyToString(Qt::ALT) + "L");
     QCOMPARE(acc_frequency->text(QAccessible::Accelerator, 0), Q3Accel::keyToString(Qt::ALT) + "C");
 
@@ -2174,6 +2175,11 @@ void tst_QAccessibility::sliderTest()
         for (int i = PageLeft; i <= PageRight; ++i) {
             const QRect testRect = sliderInterface->rect(i);
             QVERIFY(testRect.isValid());
+#ifdef Q_OS_MAC
+            if (!sliderRect.contains(testRect)) {
+                QEXPECT_FAIL("", "QTBUG-26499", Abort);
+            }
+#endif
             QVERIFY(sliderRect.contains(testRect));
         }
 
@@ -2738,6 +2744,9 @@ void tst_QAccessibility::textEditTest()
     QCOMPARE(iface->text(QAccessible::Value, 6), QString());
     QCOMPARE(iface->textInterface()->characterCount(), 31);
     QFontMetrics fm(edit.font());
+#if defined(Q_WS_X11) && defined(UBUNTU_ONEIRIC)
+    QEXPECT_FAIL("", "QTBUG-26499", Abort);
+#endif
     QCOMPARE(iface->textInterface()->characterRect(0, QAccessible2::RelativeToParent).size(), QSize(fm.width("h"), fm.height()));
     QCOMPARE(iface->textInterface()->characterRect(5, QAccessible2::RelativeToParent).size(), QSize(fm.width(" "), fm.height()));
     QCOMPARE(iface->textInterface()->characterRect(6, QAccessible2::RelativeToParent).size(), QSize(fm.width("w"), fm.height()));
@@ -3140,6 +3149,16 @@ void tst_QAccessibility::lineEditTest()
     QCOMPARE(end, cite.length());
     QCOMPARE(textIface->textAtOffset(5, QAccessible2::LineBoundary,&start,&end), cite);
     QCOMPARE(textIface->textAtOffset(5, QAccessible2::NoBoundary,&start,&end), cite);
+
+
+    // characterRect()
+    le3->show();
+    QTest::qWaitForWindowShown(le3);
+    const QRect lineEditRect = iface->rect(0);
+    // Only first 10 characters, check if they are within the bounds of line edit
+    for (int i = 0; i < 10; ++i) {
+        QVERIFY(lineEditRect.contains(textIface->characterRect(i, QAccessible2::RelativeToScreen)));
+    }
 
     delete iface;
     delete toplevel;
@@ -4375,6 +4394,9 @@ void tst_QAccessibility::comboBoxTest()
     QAccessibleInterface *acc2 = 0;
     entry = accList->navigate(QAccessible::Ancestor, 1, &acc2);
     QCOMPARE(entry, 0);
+#if defined(Q_WS_X11) && defined(QT_BUILD_INTERNAL)
+    QEXPECT_FAIL("", "QTBUG-26499", Abort);
+#endif
     QCOMPARE(verifyHierarchy(acc), 0);
     delete acc2;
 

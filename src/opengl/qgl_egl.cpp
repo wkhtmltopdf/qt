@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtOpenGL module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -50,6 +50,10 @@
 #include <QtGui/private/qpixmap_x11_p.h>
 #endif
 
+#if defined(Q_OS_SYMBIAN)
+#include <QtGui/private/qgraphicssystemex_symbian_p.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 QEglProperties *QGLContextPrivate::extraWindowSurfaceCreationProps = NULL;
@@ -64,63 +68,68 @@ void qt_eglproperties_set_glformat(QEglProperties& eglProperties, const QGLForma
     int stencilSize = glFormat.stencilBufferSize();
     int sampleCount = glFormat.samples();
 
+    bool prefer32Bit = false;
 #ifdef Q_OS_SYMBIAN
-    // on Symbian we prefer 32-bit configs
-    if (glFormat.alpha() && alphaSize <= 0)
-        alphaSize = 8;
-    if (glFormat.depth() && depthSize <= 0)
-        depthSize = 24;
-    if (glFormat.stencil() && stencilSize <= 0)
-        stencilSize = 8;
-    if (glFormat.sampleBuffers() && sampleCount <= 0)
-        sampleCount = 1;
-
-    redSize   = redSize   > 0 ? redSize   : 8;
-    greenSize = greenSize > 0 ? greenSize : 8;
-    blueSize  = blueSize  > 0 ? blueSize  : 8;
-    alphaSize = alphaSize > 0 ? alphaSize : 8;
-    depthSize = depthSize > 0 ? depthSize : 24;
-    stencilSize = stencilSize > 0 ? stencilSize : 8;
-    sampleCount = sampleCount >= 0 ? sampleCount : 4;
-#else
-    // QGLFormat uses a magic value of -1 to indicate "don't care", even when a buffer of that
-    // type has been requested. So we must check QGLFormat's booleans too if size is -1:
-    if (glFormat.alpha() && alphaSize <= 0)
-        alphaSize = 1;
-    if (glFormat.depth() && depthSize <= 0)
-        depthSize = 1;
-    if (glFormat.stencil() && stencilSize <= 0)
-        stencilSize = 1;
-    if (glFormat.sampleBuffers() && sampleCount <= 0)
-        sampleCount = 1;
-
-    // We want to make sure 16-bit configs are chosen over 32-bit configs as they will provide
-    // the best performance. The EGL config selection algorithm is a bit stange in this regard:
-    // The selection criteria for EGL_BUFFER_SIZE is "AtLeast", so we can't use it to discard
-    // 32-bit configs completely from the selection. So it then comes to the sorting algorithm.
-    // The red/green/blue sizes have a sort priority of 3, so they are sorted by first. The sort
-    // order is special and described as "by larger _total_ number of color bits.". So EGL will
-    // put 32-bit configs in the list before the 16-bit configs. However, the spec also goes on
-    // to say "If the requested number of bits in attrib_list for a particular component is 0,
-    // then the number of bits for that component is not considered". This part of the spec also
-    // seems to imply that setting the red/green/blue bits to zero means none of the components
-    // are considered and EGL disregards the entire sorting rule. It then looks to the next
-    // highest priority rule, which is EGL_BUFFER_SIZE. Despite the selection criteria being
-    // "AtLeast" for EGL_BUFFER_SIZE, it's sort order is "smaller" meaning 16-bit configs are
-    // put in the list before 32-bit configs. So, to make sure 16-bit is preffered over 32-bit,
-    // we must set the red/green/blue sizes to zero. This has an unfortunate consequence that
-    // if the application sets the red/green/blue size to 5/6/5 on the QGLFormat, they will
-    // probably get a 32-bit config, even when there's an RGB565 config available. Oh well.
-
-    // Now normalize the values so -1 becomes 0
-    redSize   = redSize   > 0 ? redSize   : 0;
-    greenSize = greenSize > 0 ? greenSize : 0;
-    blueSize  = blueSize  > 0 ? blueSize  : 0;
-    alphaSize = alphaSize > 0 ? alphaSize : 0;
-    depthSize = depthSize > 0 ? depthSize : 0;
-    stencilSize = stencilSize > 0 ? stencilSize : 0;
-    sampleCount = sampleCount > 0 ? sampleCount : 0;
+    // on Symbian we prefer 32-bit configs, unless we're using the low memory GPU
+    prefer32Bit = !QSymbianGraphicsSystemEx::hasBCM2727();
 #endif
+
+    if (prefer32Bit) {
+        if (glFormat.alpha() && alphaSize <= 0)
+            alphaSize = 8;
+        if (glFormat.depth() && depthSize <= 0)
+            depthSize = 24;
+        if (glFormat.stencil() && stencilSize <= 0)
+            stencilSize = 8;
+        if (glFormat.sampleBuffers() && sampleCount <= 0)
+            sampleCount = 1;
+
+        redSize   = redSize   > 0 ? redSize   : 8;
+        greenSize = greenSize > 0 ? greenSize : 8;
+        blueSize  = blueSize  > 0 ? blueSize  : 8;
+        alphaSize = alphaSize > 0 ? alphaSize : 8;
+        depthSize = depthSize > 0 ? depthSize : 24;
+        stencilSize = stencilSize > 0 ? stencilSize : 8;
+        sampleCount = sampleCount >= 0 ? sampleCount : 4;
+    } else {
+        // QGLFormat uses a magic value of -1 to indicate "don't care", even when a buffer of that
+        // type has been requested. So we must check QGLFormat's booleans too if size is -1:
+        if (glFormat.alpha() && alphaSize <= 0)
+            alphaSize = 1;
+        if (glFormat.depth() && depthSize <= 0)
+            depthSize = 1;
+        if (glFormat.stencil() && stencilSize <= 0)
+            stencilSize = 1;
+        if (glFormat.sampleBuffers() && sampleCount <= 0)
+            sampleCount = 1;
+
+        // We want to make sure 16-bit configs are chosen over 32-bit configs as they will provide
+        // the best performance. The EGL config selection algorithm is a bit stange in this regard:
+        // The selection criteria for EGL_BUFFER_SIZE is "AtLeast", so we can't use it to discard
+        // 32-bit configs completely from the selection. So it then comes to the sorting algorithm.
+        // The red/green/blue sizes have a sort priority of 3, so they are sorted by first. The sort
+        // order is special and described as "by larger _total_ number of color bits.". So EGL will
+        // put 32-bit configs in the list before the 16-bit configs. However, the spec also goes on
+        // to say "If the requested number of bits in attrib_list for a particular component is 0,
+        // then the number of bits for that component is not considered". This part of the spec also
+        // seems to imply that setting the red/green/blue bits to zero means none of the components
+        // are considered and EGL disregards the entire sorting rule. It then looks to the next
+        // highest priority rule, which is EGL_BUFFER_SIZE. Despite the selection criteria being
+        // "AtLeast" for EGL_BUFFER_SIZE, it's sort order is "smaller" meaning 16-bit configs are
+        // put in the list before 32-bit configs. So, to make sure 16-bit is preffered over 32-bit,
+        // we must set the red/green/blue sizes to zero. This has an unfortunate consequence that
+        // if the application sets the red/green/blue size to 5/6/5 on the QGLFormat, they will
+        // probably get a 32-bit config, even when there's an RGB565 config available. Oh well.
+
+        // Now normalize the values so -1 becomes 0
+        redSize   = redSize   > 0 ? redSize   : 0;
+        greenSize = greenSize > 0 ? greenSize : 0;
+        blueSize  = blueSize  > 0 ? blueSize  : 0;
+        alphaSize = alphaSize > 0 ? alphaSize : 0;
+        depthSize = depthSize > 0 ? depthSize : 0;
+        stencilSize = stencilSize > 0 ? stencilSize : 0;
+        sampleCount = sampleCount > 0 ? sampleCount : 0;
+    }
 
     eglProperties.setValue(EGL_RED_SIZE,   redSize);
     eglProperties.setValue(EGL_GREEN_SIZE, greenSize);

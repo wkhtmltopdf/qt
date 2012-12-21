@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -45,6 +45,7 @@
 #include <qtextstream.h>
 #include <QtNetwork/qlocalsocket.h>
 #include <QtNetwork/qlocalserver.h>
+#include <QtCore/QDir>
 #include "../../shared/util.h"
 
 #ifdef Q_OS_SYMBIAN
@@ -64,11 +65,8 @@ class tst_QLocalSocket : public QObject
 {
     Q_OBJECT
 
-public:
-    tst_QLocalSocket();
-    virtual ~tst_QLocalSocket();
-
 public Q_SLOTS:
+    void initTestCase();
     void init();
     void cleanup();
 
@@ -122,20 +120,28 @@ private slots:
 private:
     void unlink(QString serverName);
 #endif
+
+private:
+    QString m_lackey;
 };
 
-tst_QLocalSocket::tst_QLocalSocket()
+void tst_QLocalSocket::initTestCase()
 {
-    if (!QFile::exists("lackey/lackey"
+    QDir workingDirectory = QDir::current();
+    QString lackey = QLatin1String("lackey/lackey");
+    // Windows: cd up to be able to locate the binary of the sub-process.
 #ifdef Q_OS_WIN
-    ".exe"
+    lackey.append(QLatin1String(".exe"));
+    if (workingDirectory.absolutePath().endsWith(QLatin1String("/debug"), Qt::CaseInsensitive)
+        || workingDirectory.absolutePath().endsWith(QLatin1String("/release"), Qt::CaseInsensitive)) {
+        QVERIFY(workingDirectory.cdUp());
+        QVERIFY(QDir::setCurrent(workingDirectory.absolutePath()));
+    }
 #endif
-                ))
-        qWarning() << "lackey executable doesn't exists!";
-}
-
-tst_QLocalSocket::~tst_QLocalSocket()
-{
+    m_lackey = workingDirectory.absoluteFilePath(lackey);
+    QVERIFY2(QFileInfo(m_lackey).exists(),
+             qPrintable(QString::fromLatin1("Lackey executable '%1' does not exist!")
+                        .arg(QDir::toNativeSeparators(m_lackey))));
 }
 
 void tst_QLocalSocket::init()
@@ -691,7 +697,7 @@ public:
 
         // We should *not* have this signal yet!
         QCOMPARE(spyReadyRead.count(), 0);
-        socket.waitForReadyRead();
+        QVERIFY(socket.waitForReadyRead());
         QCOMPARE(spyReadyRead.count(), 1);
         QTextStream in(&socket);
         QCOMPARE(in.readLine(), testLine);
@@ -806,7 +812,7 @@ void tst_QLocalSocket::processConnection()
     serverArguments << "-qws";
 #endif
     QList<QProcess*> consumers;
-    producer.start("lackey/lackey", serverArguments);
+    producer.start(m_lackey, serverArguments);
     QVERIFY(producer.waitForStarted(-1));
     QTest::qWait(2000);
     for (int i = 0; i < processes; ++i) {
@@ -817,7 +823,7 @@ void tst_QLocalSocket::processConnection()
         QProcess *p = new QProcess;
         p->setProcessChannelMode(QProcess::ForwardedChannels);
         consumers.append(p);
-        p->start("lackey/lackey", arguments);
+        p->start(m_lackey, arguments);
     }
 
     while (!consumers.isEmpty()) {

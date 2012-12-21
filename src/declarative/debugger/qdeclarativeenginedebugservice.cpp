@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -67,7 +67,7 @@ QDeclarativeEngineDebugService *QDeclarativeEngineDebugService::instance()
 }
 
 QDeclarativeEngineDebugService::QDeclarativeEngineDebugService(QObject *parent)
-: QDeclarativeDebugService(QLatin1String("QDeclarativeEngine"), parent),
+: QDeclarativeDebugService(QLatin1String("DeclarativeDebugger"), parent),
     m_watch(new QDeclarativeWatcher(this))
 {
     QObject::connect(m_watch, SIGNAL(propertyChanged(int,int,QMetaProperty,QVariant)),
@@ -78,7 +78,8 @@ QDataStream &operator<<(QDataStream &ds,
                         const QDeclarativeEngineDebugService::QDeclarativeObjectData &data)
 {
     ds << data.url << data.lineNumber << data.columnNumber << data.idString
-       << data.objectName << data.objectType << data.objectId << data.contextId;
+       << data.objectName << data.objectType << data.objectId << data.contextId
+       << data.parentId;
     return ds;
 }
 
@@ -86,7 +87,8 @@ QDataStream &operator>>(QDataStream &ds,
                         QDeclarativeEngineDebugService::QDeclarativeObjectData &data)
 {
     ds >> data.url >> data.lineNumber >> data.columnNumber >> data.idString
-       >> data.objectName >> data.objectType >> data.objectId >> data.contextId;
+       >> data.objectName >> data.objectType >> data.objectId >> data.contextId
+       >> data.parentId;
     return ds;
 }
 
@@ -153,6 +155,8 @@ QDeclarativeEngineDebugService::propertyData(QObject *obj, int propIdx)
         rv.type = QDeclarativeObjectProperty::Object;
     } else if (QDeclarativeMetaType::isList(prop.userType())) {
         rv.type = QDeclarativeObjectProperty::List;
+    } else if (prop.userType() == QMetaType::QVariant) {
+        rv.type = QDeclarativeObjectProperty::Variant;
     }
 
     QVariant value;
@@ -174,6 +178,16 @@ QVariant QDeclarativeEngineDebugService::valueContents(const QVariant &value) co
         int count = list.size();
         for (int i = 0; i < count; i++)
             contents << valueContents(list.at(i));
+        return contents;
+    }
+
+    if (value.type() == QVariant::Map) {
+        QVariantMap contents;
+        QMapIterator<QString, QVariant> i(value.toMap());
+         while (i.hasNext()) {
+             i.next();
+             contents.insert(i.key(), valueContents(i.value()));
+         }
         return contents;
     }
 
@@ -214,10 +228,31 @@ void QDeclarativeEngineDebugService::buildObjectDump(QDataStream &message,
         QObject *child = children.at(ii);
         if (qobject_cast<QDeclarativeContext*>(child))
             continue;
+        if (!QDeclarativeBoundSignal::cast(child)) {
+            if (recur)
+                buildObjectDump(message, child, recur, dumpProperties);
+            else
+                message << objectData(child);
+        }
+    }
+
+    if (!dumpProperties) {
+        message << 0;
+        return;
+    }
+
+    QList<int> propertyIndexes;
+    for (int ii = 0; ii < object->metaObject()->propertyCount(); ++ii) {
+        if (object->metaObject()->property(ii).isScriptable())
+            propertyIndexes << ii;
+    }
+
+    for (int ii = 0; ii < children.count(); ++ii) {
+        QObject *child = children.at(ii);
+        if (qobject_cast<QDeclarativeContext*>(child))
+            continue;
         QDeclarativeBoundSignal *signal = QDeclarativeBoundSignal::cast(child);
         if (signal) {
-            if (!dumpProperties)
-                continue;
             QDeclarativeObjectProperty prop;
             prop.type = QDeclarativeObjectProperty::SignalProperty;
             prop.hasNotifySignal = false;
@@ -236,23 +271,7 @@ void QDeclarativeEngineDebugService::buildObjectDump(QDataStream &message,
                 }
             }
             fakeProperties << prop;
-        } else {
-            if (recur)
-                buildObjectDump(message, child, recur, dumpProperties);
-            else
-                message << objectData(child);
         }
-    }
-
-    if (!dumpProperties) {
-        message << 0;
-        return;
-    }
-
-    QList<int> propertyIndexes;
-    for (int ii = 0; ii < object->metaObject()->propertyCount(); ++ii) {
-        if (object->metaObject()->property(ii).isScriptable())
-            propertyIndexes << ii;
     }
 
     message << propertyIndexes.size() + fakeProperties.count();
@@ -369,6 +388,7 @@ QDeclarativeEngineDebugService::objectData(QObject *object)
     rv.objectName = object->objectName();
     rv.objectId = QDeclarativeDebugService::idForObject(object);
     rv.contextId = QDeclarativeDebugService::idForObject(qmlContext(object));
+    rv.parentId = QDeclarativeDebugService::idForObject(object->parent());
 
     QDeclarativeType *type = QDeclarativeMetaType::qmlType(object->metaObject());
     if (type) {
@@ -389,15 +409,15 @@ void QDeclarativeEngineDebugService::messageReceived(const QByteArray &message)
 {
     QDataStream ds(message);
 
+    int queryId;
     QByteArray type;
-    ds >> type;
+    ds >> type >> queryId;
+
+    QByteArray reply;
+    QDataStream rs(&reply, QIODevice::WriteOnly);
 
     if (type == "LIST_ENGINES") {
-        int queryId;
-        ds >> queryId;
 
-        QByteArray reply;
-        QDataStream rs(&reply, QIODevice::WriteOnly);
         rs << QByteArray("LIST_ENGINES_R");
         rs << queryId << m_engines.count();
 
@@ -406,21 +426,16 @@ void QDeclarativeEngineDebugService::messageReceived(const QByteArray &message)
 
             QString engineName = engine->objectName();
             int engineId = QDeclarativeDebugService::idForObject(engine);
-
             rs << engineName << engineId;
         }
 
-        sendMessage(reply);
     } else if (type == "LIST_OBJECTS") {
-        int queryId;
         int engineId = -1;
-        ds >> queryId >> engineId;
+        ds >> engineId;
 
         QDeclarativeEngine *engine = 
             qobject_cast<QDeclarativeEngine *>(QDeclarativeDebugService::objectForId(engineId));
 
-        QByteArray reply;
-        QDataStream rs(&reply, QIODevice::WriteOnly);
         rs << QByteArray("LIST_OBJECTS_R") << queryId;
 
         if (engine) {
@@ -428,19 +443,15 @@ void QDeclarativeEngineDebugService::messageReceived(const QByteArray &message)
             buildStatesList(engine->rootContext(), true);
         }
 
-        sendMessage(reply);
     } else if (type == "FETCH_OBJECT") {
-        int queryId;
         int objectId;
         bool recurse;
         bool dumpProperties = true;
 
-        ds >> queryId >> objectId >> recurse >> dumpProperties;
+        ds >> objectId >> recurse >> dumpProperties;
 
         QObject *object = QDeclarativeDebugService::objectForId(objectId);
 
-        QByteArray reply;
-        QDataStream rs(&reply, QIODevice::WriteOnly);
         rs << QByteArray("FETCH_OBJECT_R") << queryId;
 
         if (object) {
@@ -449,55 +460,40 @@ void QDeclarativeEngineDebugService::messageReceived(const QByteArray &message)
             buildObjectDump(rs, object, recurse, dumpProperties);
         }
 
-        sendMessage(reply);
     } else if (type == "WATCH_OBJECT") {
-        int queryId;
         int objectId;
 
-        ds >> queryId >> objectId;
+        ds >> objectId;
         bool ok = m_watch->addWatch(queryId, objectId);
 
-        QByteArray reply;
-        QDataStream rs(&reply, QIODevice::WriteOnly);
         rs << QByteArray("WATCH_OBJECT_R") << queryId << ok;
 
-        sendMessage(reply);
     } else if (type == "WATCH_PROPERTY") {
-        int queryId;
         int objectId;
         QByteArray property;
 
-        ds >> queryId >> objectId >> property;
+        ds >> objectId >> property;
         bool ok = m_watch->addWatch(queryId, objectId, property);
 
-        QByteArray reply;
-        QDataStream rs(&reply, QIODevice::WriteOnly);
         rs << QByteArray("WATCH_PROPERTY_R") << queryId << ok;
 
-        sendMessage(reply);
     } else if (type == "WATCH_EXPR_OBJECT") {
-        int queryId;
         int debugId;
         QString expr;
 
-        ds >> queryId >> debugId >> expr;
+        ds >> debugId >> expr;
         bool ok = m_watch->addWatch(queryId, debugId, expr);
 
-        QByteArray reply;
-        QDataStream rs(&reply, QIODevice::WriteOnly);
         rs << QByteArray("WATCH_EXPR_OBJECT_R") << queryId << ok;
-        sendMessage(reply);
-    } else if (type == "NO_WATCH") {
-        int queryId;
 
-        ds >> queryId;
+    } else if (type == "NO_WATCH") {
+
         m_watch->removeWatch(queryId);
     } else if (type == "EVAL_EXPRESSION") {
-        int queryId;
         int objectId;
         QString expr;
 
-        ds >> queryId >> objectId >> expr;
+        ds >> objectId >> expr;
 
         QObject *object = QDeclarativeDebugService::objectForId(objectId);
         QDeclarativeContext *context = qmlContext(object);
@@ -514,11 +510,8 @@ void QDeclarativeEngineDebugService::messageReceived(const QByteArray &message)
             result = QLatin1String("<unknown context>");
         }
 
-        QByteArray reply;
-        QDataStream rs(&reply, QIODevice::WriteOnly);
         rs << QByteArray("EVAL_EXPRESSION_R") << queryId << result;
 
-        sendMessage(reply);
     } else if (type == "SET_BINDING") {
         int objectId;
         QString propertyName;
@@ -531,18 +524,27 @@ void QDeclarativeEngineDebugService::messageReceived(const QByteArray &message)
             ds >> filename >> line;
         }
         setBinding(objectId, propertyName, expr, isLiteralValue, filename, line);
+
+        rs << QByteArray("SET_BINDING_R") << queryId;
+
     } else if (type == "RESET_BINDING") {
         int objectId;
         QString propertyName;
         ds >> objectId >> propertyName;
         resetBinding(objectId, propertyName);
+
+        rs << QByteArray("SET_BINDING_R") << queryId;
+
     } else if (type == "SET_METHOD_BODY") {
         int objectId;
         QString methodName;
         QString methodBody;
         ds >> objectId >> methodName >> methodBody;
         setMethodBody(objectId, methodName, methodBody);
+
+        rs << QByteArray("SET_BINDING_R") << queryId;
     }
+    sendMessage(reply);
 }
 
 void QDeclarativeEngineDebugService::setBinding(int objectId,
@@ -736,11 +738,12 @@ void QDeclarativeEngineDebugService::objectCreated(QDeclarativeEngine *engine, Q
 
     int engineId = QDeclarativeDebugService::idForObject(engine);
     int objectId = QDeclarativeDebugService::idForObject(object);
+    int parentId = QDeclarativeDebugService::idForObject(object->parent());
 
     QByteArray reply;
     QDataStream rs(&reply, QIODevice::WriteOnly);
 
-    rs << QByteArray("OBJECT_CREATED") << engineId << objectId;
+    rs << QByteArray("OBJECT_CREATED") << -1 << engineId << objectId << parentId;
     sendMessage(reply);
 }
 

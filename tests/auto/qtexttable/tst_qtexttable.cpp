@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -102,6 +102,7 @@ private slots:
     void removeColumnsInTableWithMergedRows();
     void QTBUG11282_insertBeforeMergedEnding_data();
     void QTBUG11282_insertBeforeMergedEnding();
+    void QTBUG22011_insertBeforeRowSpan();
 
 private:
     QTextTable *create2x2Table();
@@ -998,6 +999,34 @@ void tst_QTextTable::QTBUG11282_insertBeforeMergedEnding()
     QCOMPARE(table->rows(), rows);
     QCOMPARE(table->columns(), columns + insert.at(1));
     delete textEdit;
+}
+
+void tst_QTextTable::QTBUG22011_insertBeforeRowSpan()
+{
+    QTextDocument doc;
+    QTextCursor cursor(&doc);
+    QTextTable *table = cursor.insertTable(1,1); // 1x1
+
+    table->appendColumns(1); // 1x2
+    table->appendRows(1); // 2x2
+    table->mergeCells(0, 0, 2, 1); // 2x2
+    table->insertColumns(1, 1); // 2x3
+    table->mergeCells(0, 1, 1, 2); // 2x3
+    table->appendRows(1); // 3x3
+    table->mergeCells(0, 0, 3, 1); // 3x3
+    table->appendRows(1); // 4x3
+    table->insertColumns(1, 1); // 4x4
+    table->mergeCells(0, 1, 1, 3);
+    table->mergeCells(1, 1, 1, 2);
+    table->mergeCells(2, 1, 1, 2);
+    table->mergeCells(3, 0, 1, 2);
+    table->insertColumns(3, 1); // 4x5
+    table->mergeCells(0, 1, 1, 4);
+
+    table->appendColumns(1); // 4x6
+
+    QCOMPARE(table->rows(), 4);
+    QCOMPARE(table->columns(), 6);
 }
 
 QTEST_MAIN(tst_QTextTable)

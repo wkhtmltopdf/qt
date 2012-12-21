@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -60,6 +60,7 @@ public:
     tst_QUuid();
 
 private slots:
+    void initTestCase();
     void fromChar();
     void toString();
     void fromString();
@@ -95,6 +96,19 @@ tst_QUuid::tst_QUuid()
 
     //"{1ab6e93a-b1cb-4a87-ba47-ec7e99039a7b}";
     uuidB = QUuid(0x1ab6e93a ,0xb1cb ,0x4a87 ,0xba ,0x47 ,0xec ,0x7e ,0x99 ,0x03 ,0x9a ,0x7b);
+}
+
+void tst_QUuid::initTestCase()
+{
+#ifdef Q_OS_WIN
+    // cd up to be able to locate the binary of the sub-process.
+    QDir workingDirectory = QDir::current();
+    if (workingDirectory.absolutePath().endsWith(QLatin1String("/debug"), Qt::CaseInsensitive)
+        || workingDirectory.absolutePath().endsWith(QLatin1String("/release"), Qt::CaseInsensitive)) {
+        QVERIFY(workingDirectory.cdUp());
+        QVERIFY(QDir::setCurrent(workingDirectory.absolutePath()));
+    }
+#endif
 }
 
 void tst_QUuid::fromChar()
@@ -294,29 +308,33 @@ void tst_QUuid::threadUniqueness()
     qDeleteAll(threads);
 }
 
+static inline QByteArray msgCannotStartProcess(const QString &binary, const QString &why)
+{
+    return QString::fromLatin1("Cannot start '%1' from '%2': %3")
+                               .arg(QDir::toNativeSeparators(binary),
+                                    QDir::toNativeSeparators(QDir::currentPath()),
+                                    why).toLocal8Bit();
+}
+
 void tst_QUuid::processUniqueness()
 {
     QProcess process;
-    QString processOneOutput;
-    QString processTwoOutput;
-
     // Start it once
 #ifdef Q_OS_MAC
-    process.start("testProcessUniqueness/testProcessUniqueness.app");
+    const QString binary = "testProcessUniqueness/testProcessUniqueness.app";
 #else
-    process.start("testProcessUniqueness/testProcessUniqueness");
+    const QString binary = "testProcessUniqueness/testProcessUniqueness";
 #endif
+    process.start(binary);
+    QVERIFY2(process.waitForStarted(), msgCannotStartProcess(binary, process.errorString()).constData());
     QVERIFY(process.waitForFinished());
-    processOneOutput = process.readAllStandardOutput();
+    const QByteArray processOneOutput = process.readAllStandardOutput();
 
     // Start it twice
-#ifdef Q_OS_MAC
-    process.start("testProcessUniqueness/testProcessUniqueness.app");
-#else
-    process.start("testProcessUniqueness/testProcessUniqueness");
-#endif
+    process.start(binary);
+    QVERIFY2(process.waitForStarted(), msgCannotStartProcess(binary, process.errorString()).constData());
     QVERIFY(process.waitForFinished());
-    processTwoOutput = process.readAllStandardOutput();
+    const QByteArray processTwoOutput = process.readAllStandardOutput();
 
     // They should be *different*!
     QVERIFY(processOneOutput != processTwoOutput);

@@ -1,39 +1,39 @@
 #!/usr/bin/env python
 #############################################################################
 ##
-## Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-## All rights reserved.
-## Contact: Nokia Corporation (qt-info@nokia.com)
+## Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+## Contact: http://www.qt-project.org/legal
 ##
 ## This file is part of the test suite of the Qt Toolkit.
 ##
 ## $QT_BEGIN_LICENSE:LGPL$
-## GNU Lesser General Public License Usage
-## This file may be used under the terms of the GNU Lesser General Public
-## License version 2.1 as published by the Free Software Foundation and
-## appearing in the file LICENSE.LGPL included in the packaging of this
-## file. Please review the following information to ensure the GNU Lesser
-## General Public License version 2.1 requirements will be met:
-## http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+## Commercial License Usage
+## Licensees holding valid commercial Qt licenses may use this file in
+## accordance with the commercial license agreement provided with the
+## Software or, alternatively, in accordance with the terms contained in
+## a written agreement between you and Digia.  For licensing terms and
+## conditions see http://qt.digia.com/licensing.  For further information
+## use the contact form at http://qt.digia.com/contact-us.
 ##
-## In addition, as a special exception, Nokia gives you certain additional
-## rights. These rights are described in the Nokia Qt LGPL Exception
+## GNU Lesser General Public License Usage
+## Alternatively, this file may be used under the terms of the GNU Lesser
+## General Public License version 2.1 as published by the Free Software
+## Foundation and appearing in the file LICENSE.LGPL included in the
+## packaging of this file.  Please review the following information to
+## ensure the GNU Lesser General Public License version 2.1 requirements
+## will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+##
+## In addition, as a special exception, Digia gives you certain additional
+## rights.  These rights are described in the Digia Qt LGPL Exception
 ## version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 ##
 ## GNU General Public License Usage
-## Alternatively, this file may be used under the terms of the GNU General
-## Public License version 3.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of this
-## file. Please review the following information to ensure the GNU General
-## Public License version 3.0 requirements will be met:
-## http://www.gnu.org/copyleft/gpl.html.
-##
-## Other Usage
-## Alternatively, this file may be used in accordance with the terms and
-## conditions contained in a signed written agreement between you and Nokia.
-##
-##
-##
+## Alternatively, this file may be used under the terms of the GNU
+## General Public License version 3.0 as published by the Free Software
+## Foundation and appearing in the file LICENSE.GPL included in the
+## packaging of this file.  Please review the following information to
+## ensure the GNU General Public License version 3.0 requirements will be
+## met: http://www.gnu.org/copyleft/gpl.html.
 ##
 ##
 ## $QT_END_LICENSE$
@@ -178,7 +178,11 @@ def _findEntryInFile(file, path, draft=None, attribute=None):
         if elt.attributes.has_key(attribute):
             return (elt.attributes[attribute].nodeValue, None)
         return (None, None)
-    return (elt.firstChild.nodeValue, None)
+    try:
+        return (elt.firstChild.nodeValue, None)
+    except:
+        pass
+    return (None, None)
 
 def findAlias(file):
     if not doc_cache.has_key(file):
@@ -191,6 +195,36 @@ def findAlias(file):
         return False
     return alias_elt.attributes['source'].nodeValue
 
+parent_locales = {}
+def _fixedLookupChain(dirname, name):
+    # see http://www.unicode.org/reports/tr35/#Parent_Locales
+    if not parent_locales:
+        for ns in findTagsInFile(dirname + "/../supplemental/supplementalData.xml", "parentLocales"):
+            tmp = {}
+            parent_locale = ""
+            for data in ns[1:][0]: # ns looks like this: [u'parentLocale', [(u'parent', u'root'), (u'locales', u'az_Cyrl bs_Cyrl en_Dsrt ..')]]
+                tmp[data[0]] = data[1]
+                if data[0] == u"parent":
+                    parent_locale = data[1]
+            parent_locales[parent_locale] = tmp[u"locales"].split(" ")
+
+    items = name.split("_")
+    # split locale name into items and iterate through them from back to front
+    # example: az_Latn_AZ => [az_Latn_AZ, az_Latn, az]
+    items = list(reversed(map(lambda x: "_".join(items[:x+1]), range(len(items)))))
+
+    for i in range(len(items)):
+        item = items[i]
+        for parent_locale in parent_locales.keys():
+            for locale in parent_locales[parent_locale]:
+                if item == locale:
+                    if parent_locale == u"root":
+                        items = items[:i+1]
+                    else:
+                        items = items[:i+1] + parent_locale.split() + items[i+1:]
+                    return items
+    return items
+
 def _findEntry(base, path, draft=None, attribute=None):
     file = base
     if base.endswith(".xml"):
@@ -199,10 +233,8 @@ def _findEntry(base, path, draft=None, attribute=None):
     else:
         file = base + ".xml"
     (dirname, filename) = os.path.split(base)
-    items = filename.split("_")
-    # split locale name into items and iterate through them from back to front
-    # example: az_Latn_AZ => [az_Latn_AZ, az_Latn, az]
-    items = reversed(map(lambda x: "_".join(items[:x+1]), range(len(items))))
+
+    items = _fixedLookupChain(dirname, filename)
     for item in items:
         file = dirname + "/" + item + ".xml"
         if os.path.isfile(file):
@@ -242,7 +274,7 @@ def findEntry(base, path, draft=None, attribute=None):
         if result:
             return result
         if not aliaspath:
-            raise Error("findEntry: fatal error: %s: did not found key %s" % (filename, path))
+            raise Error("findEntry: fatal error: %s: can not find key %s" % (filename, path))
         path = aliaspath
 
     return result

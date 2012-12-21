@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -159,15 +159,10 @@ private slots:
     void maxVisibleItems();
     void task_QTBUG_10491_currentIndexAndModelColumn();
 
-protected slots:
-    void onEditTextChanged( const QString &newString );
-
 private:
     QComboBox *testWidget;
     QWidget *parent;
     QPushButton* ok;
-    int editTextCount;
-    QString editText;
 };
 
 class MyAbstractItemDelegate : public QAbstractItemDelegate
@@ -402,10 +397,6 @@ void tst_QComboBox::initTestCase()
     testWidget = new QComboBox(parent);
     testWidget->setObjectName("testObject");
     testWidget->setGeometry(0, 0, 100, 100);
-    editTextCount = 0;
-    editText.clear();
-    connect(testWidget, SIGNAL(editTextChanged(const QString&)),
-            this, SLOT(onEditTextChanged(const QString&)));
     parent->show();
 }
 
@@ -1390,23 +1381,19 @@ void tst_QComboBox::editTextChanged()
     testWidget->setEditable(false);
     QCOMPARE(testWidget->isEditable(), false);
 
+    QSignalSpy spy(testWidget, SIGNAL(editTextChanged(QString)));
+
     // no signal should be sent when current is set to the same
     QCOMPARE(testWidget->currentIndex(), 0);
-    editTextCount = 0;
-    editText.clear();
     testWidget->setCurrentIndex(0);
     QCOMPARE(testWidget->currentIndex(), 0);
-    QCOMPARE(editTextCount, 0);
-    QCOMPARE(editText.isEmpty(), true);
+    QCOMPARE(spy.count(), 0);
 
     // no signal should be sent when changing to other index because we are not editable
     QCOMPARE(testWidget->currentIndex(), 0);
-    editTextCount = 0;
-    editText.clear();
     testWidget->setCurrentIndex(1);
     QCOMPARE(testWidget->currentIndex(), 1);
-    QCOMPARE(editTextCount, 0);
-    QCOMPARE(editText.isEmpty(), true);
+    QCOMPARE(spy.count(), 0);
 
     // now set to editable and reset current index
     testWidget->setEditable(true);
@@ -1414,35 +1401,25 @@ void tst_QComboBox::editTextChanged()
     testWidget->setCurrentIndex(0);
 
     // no signal should be sent when current is set to the same
+    spy.clear();
     QCOMPARE(testWidget->currentIndex(), 0);
-    editTextCount = 0;
-    editText.clear();
     testWidget->setCurrentIndex(0);
     QCOMPARE(testWidget->currentIndex(), 0);
-    QCOMPARE(editTextCount, 0);
-    QCOMPARE(editText.isEmpty(), true);
+    QCOMPARE(spy.count(), 0);
 
     // signal should be sent when changing to other index
     QCOMPARE(testWidget->currentIndex(), 0);
-    editTextCount = 0;
-    editText.clear();
     testWidget->setCurrentIndex(1);
     QCOMPARE(testWidget->currentIndex(), 1);
-    QCOMPARE(editTextCount, 1);
-    QCOMPARE(editText, QString("bar"));
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(qvariant_cast<QString>(spy.at(0).at(0)), QString("bar"));
+
 
     // insert some keys and notice they are all signaled
-    editTextCount = 0;
-    editText.clear();
+    spy.clear();
     QTest::keyClicks(testWidget, "bingo");
-    QCOMPARE(editTextCount, 5);
-    QCOMPARE(editText, QString("barbingo"));
-}
-
-void tst_QComboBox::onEditTextChanged(const QString &text)
-{
-    editTextCount++;
-    editText = text;
+    QCOMPARE(spy.count(), 5);
+    QCOMPARE(qvariant_cast<QString>(spy.at(4).at(0)), QString("barbingo"));
 }
 
 void tst_QComboBox::setModel()

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -62,6 +62,7 @@
 #include <qtcpserver.h>
 #include <qhostaddress.h>
 #include <qprocess.h>
+#include <qdir.h>
 #include <qstringlist.h>
 #include <qplatformdefs.h>
 #include <qhostinfo.h>
@@ -115,11 +116,14 @@ private slots:
 
     void qtbug6305();
 
+    void linkLocal();
+
 private:
 #ifndef QT_NO_BEARERMANAGEMENT
     QNetworkSession *networkSession;
     QNetworkConfigurationManager *netConfMan;
 #endif
+    QString m_crashingServer;
 };
 
 // Testing get/set functions
@@ -156,6 +160,23 @@ void tst_QTcpServer::initTestCase_data()
 
 void tst_QTcpServer::initTestCase()
 {
+    if (m_crashingServer.isEmpty()) {
+        QString crashingServer = QLatin1String("crashingServer/crashingServer");
+        QDir workingDirectory = QDir::current();
+        // Windows: cd up to be able to locate the binary of the sub-process.
+#ifdef Q_OS_WIN
+        crashingServer.append(QLatin1String(".exe"));
+        if (workingDirectory.absolutePath().endsWith(QLatin1String("/debug"), Qt::CaseInsensitive)
+            || workingDirectory.absolutePath().endsWith(QLatin1String("/release"), Qt::CaseInsensitive)) {
+            QVERIFY(workingDirectory.cdUp());
+            QVERIFY(QDir::setCurrent(workingDirectory.absolutePath()));
+        }
+#endif
+        m_crashingServer = workingDirectory.absoluteFilePath(crashingServer);
+        QVERIFY2(QFileInfo(m_crashingServer).exists(),
+                 qPrintable(QString::fromLatin1("Crashing server executable '%1' does not exist!")
+                            .arg(QDir::toNativeSeparators(m_crashingServer))));
+    }
 #ifndef QT_NO_BEARERMANAGEMENT
     netConfMan = new QNetworkConfigurationManager(this);
     netConfMan->updateConfigurations();
@@ -535,7 +556,7 @@ void tst_QTcpServer::addressReusable()
     QFile::remove(signalName);
     // The crashingServer process will crash once it gets a connection.
     QProcess process;
-    process.start("crashingServer/crashingServer");
+    process.start(m_crashingServer);
     int waitCount = 5;
     while (waitCount-- && !QFile::exists(signalName))
         QTest::qWait(1000);
@@ -544,7 +565,7 @@ void tst_QTcpServer::addressReusable()
 #else
     // The crashingServer process will crash once it gets a connection.
     QProcess process;
-    process.start("crashingServer/crashingServer");
+    process.start(m_crashingServer);
     QVERIFY(process.waitForReadyRead(5000));
 #endif
 
@@ -803,6 +824,76 @@ void tst_QTcpServer::qtbug6305()
 
     QTcpServer server2;
     QVERIFY(!server2.listen(QHostAddress::Any, server.serverPort())); // second listen should fail
+}
+
+void tst_QTcpServer::linkLocal()
+{
+    QFETCH_GLOBAL(bool, setProxy);
+    if (setProxy)
+        return;
+
+    QList <QHostAddress> addresses;
+    QSet <QString> scopes;
+    QHostAddress localMaskv4("169.254.0.0");
+    QHostAddress localMaskv6("fe80::");
+    foreach (const QNetworkInterface& iface, QNetworkInterface::allInterfaces()) {
+        //Windows preallocates link local addresses to interfaces that are down.
+        //These may or may not work depending on network driver (they do not work for the Bluetooth PAN driver)
+        if (iface.flags() & QNetworkInterface::IsUp) {
+            foreach (QNetworkAddressEntry addressEntry, iface.addressEntries()) {
+                QHostAddress addr = addressEntry.ip();
+                if (addr.isInSubnet(localMaskv4, 16)) {
+                    addresses << addr;
+                    qDebug() << addr;
+                }
+                else if (!addr.scopeId().isEmpty() && addr.isInSubnet(localMaskv6, 64)) {
+                    scopes << addr.scopeId();
+                    addresses << addr;
+                    qDebug() << addr;
+                }
+            }
+        }
+    }
+    if (addresses.isEmpty())
+        QSKIP("no link local addresses", SkipSingle);
+
+    QList<QTcpServer*> servers;
+    quint16 port = 0;
+    foreach (const QHostAddress& addr, addresses) {
+        QTcpServer *server = new QTcpServer;
+        QVERIFY(server->listen(addr, port));
+        port = server->serverPort(); //listen to same port on different interfaces
+        servers << server;
+    }
+
+    QList<QTcpSocket*> clients;
+    foreach (const QHostAddress& addr, addresses) {
+        //unbound socket (note, bound TCP client socket not supported by Qt 4.8)
+        QTcpSocket *socket = new QTcpSocket;
+        socket->connectToHost(addr, port);
+        QVERIFY(socket->waitForConnected(5000));
+        clients << socket;
+    }
+
+    //each server should have one connection
+    foreach (QTcpServer* server, servers) {
+        QTcpSocket* remote;
+        //qDebug() << "checking for connections" << server->serverAddress() << ":" << server->serverPort();
+        QVERIFY(server->waitForNewConnection(5000));
+        QVERIFY(remote = server->nextPendingConnection());
+        remote->close();
+        delete remote;
+        QVERIFY(!server->hasPendingConnections());
+    }
+
+    //Connecting to the same address with different scope should normally fail
+    //However it will pass if there are two interfaces connected to the same physical network,
+    //e.g. connected via wired and wireless interfaces, or two wired NICs.
+    //which is a reasonably common case.
+    //So this is not auto tested.
+
+    qDeleteAll(clients);
+    qDeleteAll(servers);
 }
 
 QTEST_MAIN(tst_QTcpServer)

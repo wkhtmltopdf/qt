@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -130,6 +130,11 @@ private slots:
     void taskQTBUG_12308_wrongFlowLayout();
     void taskQTBUG_21115_scrollToAndHiddenItems_data();
     void taskQTBUG_21115_scrollToAndHiddenItems();
+    void taskQTBUG_21804_hiddenItemsAndScrollingWithKeys_data();
+    void taskQTBUG_21804_hiddenItemsAndScrollingWithKeys();
+    void spacing_data();
+    void spacing();
+    void testScrollToWithHidden();
 };
 
 // Testing get/set functions
@@ -2107,6 +2112,154 @@ void tst_QListView::taskQTBUG_21115_scrollToAndHiddenItems()
     QApplication::processEvents();
     QCOMPARE(lv.visualRect(index), firstItemRect);
 }
+
+void tst_QListView::taskQTBUG_21804_hiddenItemsAndScrollingWithKeys_data()
+{
+    QTest::addColumn<int>("flow");
+    QTest::addColumn<int>("spacing");
+    QTest::newRow("flow TopToBottom no spacing") << static_cast<int>(QListView::TopToBottom) << 0;
+    QTest::newRow("flow TopToBottom with spacing") << static_cast<int>(QListView::TopToBottom) << 5;
+    QTest::newRow("flow LeftToRight no spacing") << static_cast<int>(QListView::LeftToRight) << 0;
+    QTest::newRow("flow LeftToRight with spacing") << static_cast<int>(QListView::LeftToRight) << 5;
+}
+
+void tst_QListView::taskQTBUG_21804_hiddenItemsAndScrollingWithKeys()
+{
+    QFETCH(int, flow);
+    QFETCH(int, spacing);
+
+    // create some items to show
+    QStringListModel model;
+    QStringList list;
+    for (int i = 0; i < 60; i++)
+        list << QString::number(i);
+    model.setStringList(list);
+
+    // create listview
+    QListView lv;
+    lv.setFlow(static_cast<QListView::Flow>(flow));
+    lv.setSpacing(spacing);
+    lv.setModel(&model);
+    lv.show();
+    QTest::qWaitForWindowShown(&lv);
+
+    // hide every odd number row
+    for (int i = 1; i < model.rowCount(); i+=2)
+        lv.setRowHidden(i, true);
+
+    // scroll forward and check that selected item is visible always
+    int visibleItemCount = model.rowCount()/2;
+    for (int i = 0; i < visibleItemCount; i++) {
+        if (flow == QListView::TopToBottom)
+            QTest::keyClick(&lv, Qt::Key_Down);
+        else
+            QTest::keyClick(&lv, Qt::Key_Right);
+        QTest::qWait(100);
+        QVERIFY(lv.rect().contains(lv.visualRect(lv.currentIndex())));
+    }
+
+    // scroll backward
+    for (int i = 0; i < visibleItemCount; i++) {
+        if (flow == QListView::TopToBottom)
+            QTest::keyClick(&lv, Qt::Key_Up);
+        else
+            QTest::keyClick(&lv, Qt::Key_Left);
+        QTest::qWait(100);
+        QVERIFY(lv.rect().contains(lv.visualRect(lv.currentIndex())));
+    }
+
+    // scroll forward only half way
+    for (int i = 0; i < visibleItemCount/2; i++) {
+        if (flow == QListView::TopToBottom)
+            QTest::keyClick(&lv, Qt::Key_Down);
+        else
+            QTest::keyClick(&lv, Qt::Key_Right);
+        QTest::qWait(100);
+        QVERIFY(lv.rect().contains(lv.visualRect(lv.currentIndex())));
+    }
+
+    // scroll backward again
+    for (int i = 0; i < visibleItemCount/2; i++) {
+        if (flow == QListView::TopToBottom)
+            QTest::keyClick(&lv, Qt::Key_Up);
+        else
+            QTest::keyClick(&lv, Qt::Key_Left);
+        QTest::qWait(100);
+        QVERIFY(lv.rect().contains(lv.visualRect(lv.currentIndex())));
+    }
+}
+
+void tst_QListView::spacing_data()
+{
+    QTest::addColumn<int>("flow");
+    QTest::addColumn<int>("spacing");
+    QTest::newRow("flow=TopToBottom spacing=0") << static_cast<int>(QListView::TopToBottom) << 0;
+    QTest::newRow("flow=TopToBottom spacing=10") << static_cast<int>(QListView::TopToBottom) << 10;
+    QTest::newRow("flow=LeftToRight spacing=0") << static_cast<int>(QListView::LeftToRight) << 0;
+    QTest::newRow("flow=LeftToRight spacing=10") << static_cast<int>(QListView::LeftToRight) << 10;
+}
+
+void tst_QListView::spacing()
+{
+    QFETCH(int, flow);
+    QFETCH(int, spacing);
+
+    // create some items to show
+    QStringListModel model;
+    QStringList list;
+    for (int i = 0; i < 60; i++)
+        list << QString::number(i);
+    model.setStringList(list);
+
+    // create listview
+    QListView lv;
+    lv.setFlow(static_cast<QListView::Flow>(flow));
+    lv.setModel(&model);
+    lv.setSpacing(spacing);
+    lv.show();
+    QTest::qWaitForWindowShown(&lv);
+
+    // check size and position of first two items
+    QRect item1 = lv.visualRect(lv.model()->index(0, 0));
+    QRect item2 = lv.visualRect(lv.model()->index(1, 0));
+    QCOMPARE(item1.topLeft(), QPoint(flow == QListView::TopToBottom ? spacing : 0, spacing));
+    if (flow == QListView::TopToBottom) {
+        QCOMPARE(item1.width(), lv.viewport()->width() - 2 * spacing);
+        QCOMPARE(item2.topLeft(), QPoint(spacing, spacing + item1.height() + 2 * spacing));
+    }
+    else { // QListView::LeftToRight
+        QCOMPARE(item1.height(), lv.viewport()->height() - 2 * spacing);
+        QCOMPARE(item2.topLeft(), QPoint(spacing + item1.width() + spacing, spacing));
+    }
+}
+
+void tst_QListView::testScrollToWithHidden()
+{
+    QListView lv;
+
+    QStringListModel model;
+    QStringList list;
+    for (int i = 0; i < 30; i++)
+        list << QString::number(i);
+    model.setStringList(list);
+    lv.setModel(&model);
+
+    lv.setRowHidden(1, true);
+    lv.setSpacing(5);
+
+    lv.show();
+    QTest::qWaitForWindowShown(&lv);
+
+    QCOMPARE(lv.verticalScrollBar()->value(), 0);
+
+    lv.scrollTo(model.index(26, 0));
+    int expectedScrollBarValue = lv.verticalScrollBar()->value();
+    QVERIFY(expectedScrollBarValue != 0);
+
+    lv.scrollTo(model.index(25, 0));
+    QCOMPARE(expectedScrollBarValue, lv.verticalScrollBar()->value());
+}
+
 
 QTEST_MAIN(tst_QListView)
 #include "tst_qlistview.moc"

@@ -1,26 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -3723,11 +3723,11 @@
         \l{GNU Lesser General Public License (LGPL)} or the
         \l{Qt Commercial Edition}{Qt Commercial License Agreement}, but rather under
         specific licenses from the original authors. Some pieces of code were developed
-        by Nokia and others originated from third parties.
+        by Digia and others originated from third parties.
         This page lists the licenses used, names the authors, and links
         to the places where it is used.
 
-        Nokia gratefully acknowledges these and other contributions
+        Digia gratefully acknowledges these and other contributions
         to Qt. We recommend that programs that use Qt also acknowledge
         these contributions, and quote these license statements in an
         appendix to the documentation.
@@ -4080,10 +4080,10 @@
        <shortdesc>the QWidget class is the base class of all user interface objects.</shortdesc>
        <prolog>
            <author>Qt Development Frameworks</author>
-           <publisher>Nokia</publisher>
+           <publisher>Digia</publisher>
            <copyright>
                <copyryear year="2011"/>
-               <copyrholder>Nokia</copyrholder>
+               <copyrholder>Digia</copyrholder>
            </copyright>
            <permissions view="all"/>
            <metadata>
@@ -7019,9 +7019,9 @@
     \code
     dita.metadata.default.author      = Qt Development Frameworks
     dita.metadata.default.permissions = all
-    dita.metadata.default.publisher   = Nokia
+    dita.metadata.default.publisher   = Digia
     dita.metadata.default.copyryear = 2011
-    dita.metadata.default.copyrholder = Nokia
+    dita.metadata.default.copyrholder = Digia
     dita.metadata.default.audience = programmer
     \endcode
 

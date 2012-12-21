@@ -1,6 +1,6 @@
 /*
-* Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-* All rights reserved.
+* Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+* Contact: http://www.qt-project.org/legal
 *
 * Description:  Build information file for Qt configuration
 *
@@ -41,9 +41,6 @@ confml/qt.confml                  CONFML_EXPORT_PATH(qt.confml,uda_content)
 implml/qt_copy.implml             CRML_EXPORT_PATH(qt_copy.implml,uda_content)
 qt.sisx                           CRML_EXPORT_PATH(../content/sis/,uda_content)
 #endif
-
-/* export stub sis to enable eclipsing */
-qt_stub.sis                         /epoc32/data/z/system/install/qt_stub.sis
 
 //tools
 ../../bin/createpackage.bat         /epoc32/tools/createpackage.bat
@@ -127,4 +124,10 @@ OPTION QT_ROOT ..
 #endif
 
 OPTION OPTIONS -opensource -confirm-license -openvg QT_OPENGL_ES_CONFIG -script -no-scripttools -no-webkit -make make -graphicssystem openvg -phonon -phonon-backend -usedeffiles -dont-process -nomake examples -nomake demos -nomake tools -audio-backend -fpu softvfp+vfpv2 -debug -debug-and-release
+END
+
+/* create stub sis to enable eclipsing */
+START EXTENSION app-services.buildstubsis
+OPTION SISNAME qt_stub
+OPTION SRCDIR .
 END

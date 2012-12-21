@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -96,7 +96,7 @@ public:
 
 QDeclarativeEngineDebugClient::QDeclarativeEngineDebugClient(QDeclarativeDebugConnection *client,
                                            QDeclarativeEngineDebugPrivate *p)
-: QDeclarativeDebugClient(QLatin1String("QDeclarativeEngine"), client), priv(p)
+: QDeclarativeDebugClient(QLatin1String("DeclarativeDebugger"), client), priv(p)
 {
 }
 
@@ -217,6 +217,8 @@ void QDeclarativeEngineDebugPrivate::decode(QDataStream &ds, QDeclarativeDebugOb
     o.m_source.m_lineNumber = data.lineNumber;
     o.m_source.m_columnNumber = data.columnNumber;
     o.m_contextDebugId = data.contextId;
+    o.m_parentId = data.parentId;
+    o.m_needsMoreData = simple;
 
     if (simple)
         return;
@@ -246,6 +248,7 @@ void QDeclarativeEngineDebugPrivate::decode(QDataStream &ds, QDeclarativeDebugOb
             case QDeclarativeEngineDebugService::QDeclarativeObjectProperty::Basic:
             case QDeclarativeEngineDebugService::QDeclarativeObjectProperty::List:
             case QDeclarativeEngineDebugService::QDeclarativeObjectProperty::SignalProperty:
+            case QDeclarativeEngineDebugService::QDeclarativeObjectProperty::Variant:
             {
                 prop.m_value = data.value;
                 break;
@@ -646,7 +649,8 @@ bool QDeclarativeEngineDebug::setBindingForObject(int objectDebugId, const QStri
     if (d->client->status() == QDeclarativeDebugClient::Enabled && objectDebugId != -1) {
         QByteArray message;
         QDataStream ds(&message, QIODevice::WriteOnly);
-        ds << QByteArray("SET_BINDING") << objectDebugId << propertyName << bindingExpression << isLiteralValue << source << line;
+        ds << QByteArray("SET_BINDING") << d->getId() << objectDebugId << propertyName <<
+              bindingExpression << isLiteralValue << source << line;
         d->client->sendMessage(message);
         return true;
     } else {
@@ -661,7 +665,7 @@ bool QDeclarativeEngineDebug::resetBindingForObject(int objectDebugId, const QSt
     if (d->client->status() == QDeclarativeDebugClient::Enabled && objectDebugId != -1) {
         QByteArray message;
         QDataStream ds(&message, QIODevice::WriteOnly);
-        ds << QByteArray("RESET_BINDING") << objectDebugId << propertyName;
+        ds << QByteArray("RESET_BINDING") << d->getId() << objectDebugId << propertyName;
         d->client->sendMessage(message);
         return true;
     } else {
@@ -677,7 +681,8 @@ bool QDeclarativeEngineDebug::setMethodBody(int objectDebugId, const QString &me
     if (d->client->status() == QDeclarativeDebugClient::Enabled && objectDebugId != -1) {
         QByteArray message;
         QDataStream ds(&message, QIODevice::WriteOnly);
-        ds << QByteArray("SET_METHOD_BODY") << objectDebugId << methodName << methodBody;
+        ds << QByteArray("SET_METHOD_BODY") << d->getId() << objectDebugId << methodName
+           << methodBody;
         d->client->sendMessage(message);
         return true;
     } else {
@@ -866,27 +871,28 @@ QString QDeclarativeDebugEngineReference::name() const
 }
 
 QDeclarativeDebugObjectReference::QDeclarativeDebugObjectReference()
-: m_debugId(-1), m_contextDebugId(-1)
+    : m_debugId(-1), m_parentId(-1), m_contextDebugId(-1), m_needsMoreData(false)
 {
 }
 
 QDeclarativeDebugObjectReference::QDeclarativeDebugObjectReference(int debugId)
-: m_debugId(debugId), m_contextDebugId(-1)
+: m_debugId(debugId), m_parentId(-1), m_contextDebugId(-1), m_needsMoreData(false)
 {
 }
 
 QDeclarativeDebugObjectReference::QDeclarativeDebugObjectReference(const QDeclarativeDebugObjectReference &o)
-: m_debugId(o.m_debugId), m_class(o.m_class), m_idString(o.m_idString),
+: m_debugId(o.m_debugId), m_parentId(o.m_parentId), m_class(o.m_class), m_idString(o.m_idString),
   m_name(o.m_name), m_source(o.m_source), m_contextDebugId(o.m_contextDebugId),
-  m_properties(o.m_properties), m_children(o.m_children)
+  m_needsMoreData(o.m_needsMoreData), m_properties(o.m_properties), m_children(o.m_children)
 {
 }
 
 QDeclarativeDebugObjectReference &
 QDeclarativeDebugObjectReference::operator=(const QDeclarativeDebugObjectReference &o)
 {
-    m_debugId = o.m_debugId; m_class = o.m_class; m_idString = o.m_idString;
-    m_name = o.m_name; m_source = o.m_source; m_contextDebugId = o.m_contextDebugId;
+    m_debugId = o.m_debugId; m_parentId = o.m_parentId; m_class = o.m_class;
+    m_idString = o.m_idString; m_name = o.m_name; m_source = o.m_source;
+    m_contextDebugId = o.m_contextDebugId; m_needsMoreData = o.m_needsMoreData;
     m_properties = o.m_properties; m_children = o.m_children;
     return *this;
 }
@@ -894,6 +900,11 @@ QDeclarativeDebugObjectReference::operator=(const QDeclarativeDebugObjectReferen
 int QDeclarativeDebugObjectReference::debugId() const
 {
     return m_debugId;
+}
+
+int QDeclarativeDebugObjectReference::parentId() const
+{
+    return m_parentId;
 }
 
 QString QDeclarativeDebugObjectReference::className() const
@@ -919,6 +930,11 @@ QDeclarativeDebugFileReference QDeclarativeDebugObjectReference::source() const
 int QDeclarativeDebugObjectReference::contextDebugId() const
 {
     return m_contextDebugId;
+}
+
+bool QDeclarativeDebugObjectReference::needsMoreData() const
+{
+    return m_needsMoreData;
 }
 
 QList<QDeclarativeDebugPropertyReference> QDeclarativeDebugObjectReference::properties() const

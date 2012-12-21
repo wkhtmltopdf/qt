@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -82,6 +82,7 @@ private slots:
     void joining();
     void combiningClass();
     void digitValue();
+    void mirroredChar();
     void decomposition();
 //     void ligature();
     void lineBreakClass();
@@ -448,6 +449,27 @@ void tst_QChar::digitValue()
     QVERIFY(QChar::digitValue((uint)0x1040) == 0);
 }
 
+void tst_QChar::mirroredChar()
+{
+    QVERIFY(QChar(0x169B).hasMirrored());
+    QVERIFY(QChar(0x169B).mirroredChar() == QChar(0x169C));
+    QVERIFY(QChar(0x169C).hasMirrored());
+    QVERIFY(QChar(0x169C).mirroredChar() == QChar(0x169B));
+
+    QVERIFY(QChar(0x301A).hasMirrored());
+    QVERIFY(QChar(0x301A).mirroredChar() == QChar(0x301B));
+    QVERIFY(QChar(0x301B).hasMirrored());
+    QVERIFY(QChar(0x301B).mirroredChar() == QChar(0x301A));
+
+    // QTBUG-25169
+    if (QChar::currentUnicodeVersion() <= QChar::Unicode_5_0) {
+        QVERIFY(!QChar(0x201C).hasMirrored());
+        QVERIFY(QChar(0x201C).mirroredChar() != QChar(0x201D));
+        QVERIFY(!QChar(0x201D).hasMirrored());
+        QVERIFY(QChar(0x201D).mirroredChar() != QChar(0x201C));
+    }
+}
+
 void tst_QChar::decomposition()
 {
     QVERIFY(QChar((ushort)0xa0).decompositionTag() == QChar::NoBreak);
@@ -637,6 +659,18 @@ void tst_QChar::normalization()
 
 void tst_QChar::normalization_manual()
 {
+    {
+        QString decomposed;
+        decomposed += QChar(0x41);
+        decomposed += QChar(0x0221); // assigned in 4.0
+        decomposed += QChar(0x300);
+
+        QVERIFY(decomposed.normalized(QString::NormalizationForm_C, QChar::Unicode_3_2) == decomposed);
+
+        decomposed[1] = QChar(0x037f); // unassigned in 6.1
+
+        QVERIFY(decomposed.normalized(QString::NormalizationForm_C) == decomposed);
+    }
     {
         QString composed;
         composed += QChar(0xc0);

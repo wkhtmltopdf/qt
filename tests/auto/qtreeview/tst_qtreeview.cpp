@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -76,8 +76,11 @@ static void initStandardTreeModel(QStandardItemModel *model)
     model->insertRow(2, item);
 }
 
+class tst_QTreeView;
 struct PublicView : public QTreeView
 {
+    friend class tst_QTreeView;
+
     inline void executeDelayedItemsLayout()
     { QTreeView::executeDelayedItemsLayout(); }
 
@@ -216,6 +219,8 @@ private slots:
     void indexRowSizeHint();
     void addRowsWhileSectionsAreHidden();
     void filterProxyModelCrash();
+    void renderToPixmap_data();
+    void renderToPixmap();
     void styleOptionViewItem();
     void keyboardNavigationWithDisabled();
 
@@ -243,6 +248,11 @@ private slots:
     void taskQTBUG_9216_setSizeAndUniformRowHeightsWrongRepaint();
     void taskQTBUG_11466_keyboardNavigationRegression();
     void taskQTBUG_13567_removeLastItemRegression();
+    void taskQTBUG_25333_adjustViewOptionsForIndex();
+
+#ifndef QT_NO_ANIMATION
+    void quickExpandCollapse();
+#endif
 };
 
 class QtTestModel: public QAbstractItemModel
@@ -2901,6 +2911,37 @@ void tst_QTreeView::filterProxyModelCrash()
     view.repaint(); //used to crash
 }
 
+void tst_QTreeView::renderToPixmap_data()
+{
+    QTest::addColumn<int>("row");
+    QTest::newRow("row-0") << 0;
+    QTest::newRow("row-1") << 1;
+}
+
+void tst_QTreeView::renderToPixmap()
+{
+    QFETCH(int, row);
+    PublicView view;
+    QStandardItemModel model;
+
+    model.appendRow(new QStandardItem("Spanning"));
+    model.appendRow(QList<QStandardItem*>() << new QStandardItem("Not") << new QStandardItem("Spanning"));
+
+    view.setModel(&model);
+    view.setFirstColumnSpanned(0, QModelIndex(), true);
+
+#ifdef QT_BUILD_INTERNAL
+    {
+        // We select the index at row=0 because it spans the
+        // column (regression test for an assert)
+        // We select the index at row=1 for coverage.
+        QItemSelection sel(model.index(row,0), model.index(row,1));
+        QRect rect;
+        view.aiv_priv()->renderToPixmap(sel.indexes(), &rect);
+    }
+#endif
+}
+
 void tst_QTreeView::styleOptionViewItem()
 {
     class MyDelegate : public QStyledItemDelegate
@@ -3005,6 +3046,7 @@ void tst_QTreeView::styleOptionViewItem()
         // Test the rendering to pixmap before painting the widget.
         // The rendering to pixmap should not depend on having been
         // painted already yet.
+        delegate.count = 0;
         QItemSelection sel(model.index(0,0), model.index(0,modelColumns-1));
         QRect rect;
         view.aiv_priv()->renderToPixmap(sel.indexes(), &rect);
@@ -3974,6 +4016,81 @@ void tst_QTreeView::taskQTBUG_13567_removeLastItemRegression()
     QCOMPARE(view.currentIndex(), model.index(198, 0));
     CHECK_VISIBLE(198, 0);
 }
+
+// From QTBUG-25333 (QTreeWidget drag crashes when there was a hidden item in tree)
+// The test passes simply if it doesn't crash, hence there are no calls
+// to QCOMPARE() or QVERIFY().
+// Note: define QT_BUILD_INTERNAL to run this test
+void tst_QTreeView::taskQTBUG_25333_adjustViewOptionsForIndex()
+{
+    PublicView view;
+    QStandardItemModel model;
+    QStandardItem *item1 = new QStandardItem("Item1");
+    QStandardItem *item2 = new QStandardItem("Item2");
+    QStandardItem *item3 = new QStandardItem("Item3");
+    QStandardItem *data1 = new QStandardItem("Data1");
+    QStandardItem *data2 = new QStandardItem("Data2");
+    QStandardItem *data3 = new QStandardItem("Data3");
+
+    // Create a treeview
+    model.appendRow(QList<QStandardItem*>() << item1 << data1 );
+    model.appendRow(QList<QStandardItem*>() << item2 << data2 );
+    model.appendRow(QList<QStandardItem*>() << item3 << data3 );
+
+    view.setModel(&model);
+
+    // Hide a row
+    view.setRowHidden(1, QModelIndex(), true);
+    view.expandAll();
+
+    view.show();
+
+#ifdef QT_BUILD_INTERNAL
+    {
+        QStyleOptionViewItemV4 option;
+
+        view.aiv_priv()->adjustViewOptionsForIndex(&option, model.indexFromItem(item1));
+
+        view.aiv_priv()->adjustViewOptionsForIndex(&option, model.indexFromItem(item3));
+    }
+#endif
+
+}
+
+#ifndef QT_NO_ANIMATION
+void tst_QTreeView::quickExpandCollapse()
+{
+    //this unit tests makes sure the state after the animation is restored correctly
+    //after starting a 2nd animation while the first one was still on-going
+    //this tests that the stateBeforeAnimation is not set to AnimatingState
+    PublicView tree;
+    tree.setAnimated(true);
+    QStandardItemModel model;
+    QStandardItem *root = new QStandardItem("root");
+    root->appendRow(new QStandardItem("subnode"));
+    model.appendRow(root);
+    tree.setModel(&model);
+
+    QModelIndex rootIndex = root->index();
+    QVERIFY(rootIndex.isValid());
+
+    tree.show();
+    QTest::qWaitForWindowShown(&tree);
+
+    int initialState = tree.state();
+
+    tree.expand(rootIndex);
+    QCOMPARE(tree.state(), (int)PublicView::AnimatingState);
+
+    tree.collapse(rootIndex);
+    QCOMPARE(tree.state(), (int)PublicView::AnimatingState);
+
+    QTest::qWait(500); //the animation lasts for 250ms max so 500 should be enough
+
+    QCOMPARE(tree.state(), initialState);
+}
+#endif
+
 
 QTEST_MAIN(tst_QTreeView)
 #include "tst_qtreeview.moc"

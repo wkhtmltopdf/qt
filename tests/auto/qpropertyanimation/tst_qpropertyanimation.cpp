@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -124,6 +124,7 @@ private slots:
     void setStartEndValues_data();
     void setStartEndValues();
     void zeroDurationStart();
+    void zeroDurationForwardBackward();
     void operationsInStates_data();
     void operationsInStates();
     void oneKeyValue();
@@ -877,6 +878,50 @@ void tst_QPropertyAnimation::zeroDurationStart()
     QCOMPARE(qVariantValue<QAbstractAnimation::State>(secondChange.last()), QAbstractAnimation::Running);
     //new state
     QCOMPARE(qVariantValue<QAbstractAnimation::State>(secondChange.first()), QAbstractAnimation::Stopped);
+}
+
+void tst_QPropertyAnimation::zeroDurationForwardBackward()
+{
+    QObject o; o.setProperty("test", 1);
+    QObject o2; o2.setProperty("test", 2);
+    QObject o3; o3.setProperty("test", 3);
+    QObject o4; o4.setProperty("test", 4);
+    QPropertyAnimation prop(&o, "test"); prop.setDuration(0); prop.setStartValue(1); prop.setEndValue(2);
+
+    prop.start();
+    QCOMPARE(o.property("test").toInt(), 2);
+    prop.setDirection(QAbstractAnimation::Backward);
+    prop.start();
+    QCOMPARE(o.property("test").toInt(), 1);
+
+    prop.setDirection(QAbstractAnimation::Forward);
+    QPropertyAnimation prop2(&o2, "test"); prop2.setDuration(0); prop2.setStartValue(2); prop2.setEndValue(3);
+    QPropertyAnimation prop3(&o3, "test"); prop3.setDuration(0); prop3.setStartValue(3); prop3.setEndValue(4);
+    QPropertyAnimation prop4(&o4, "test"); prop4.setDuration(0); prop4.setStartValue(4); prop4.setEndValue(5);
+    QSequentialAnimationGroup group;
+    group.addAnimation(&prop);
+    group.addAnimation(&prop2);
+    group.addAnimation(&prop3);
+    group.addAnimation(&prop4);
+    group.start();
+
+    QCOMPARE(o.property("test").toInt(), 2);
+    QCOMPARE(o2.property("test").toInt(), 3);
+    QCOMPARE(o3.property("test").toInt(), 4);
+    QCOMPARE(o4.property("test").toInt(), 5);
+
+    group.setDirection(QAbstractAnimation::Backward);
+    group.start();
+
+    QCOMPARE(o.property("test").toInt(), 1);
+    QCOMPARE(o2.property("test").toInt(), 2);
+    QCOMPARE(o3.property("test").toInt(), 3);
+    QCOMPARE(o4.property("test").toInt(), 4);
+
+    group.removeAnimation(&prop);
+    group.removeAnimation(&prop2);
+    group.removeAnimation(&prop3);
+    group.removeAnimation(&prop4);
 }
 
 #define Pause 1

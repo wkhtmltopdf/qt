@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -151,6 +151,8 @@ private slots:
     void mapSelectionFromSource();
     void testResetInternalData();
     void filteredColumns();
+    void hierarchyFilterInvalidation();
+    void simpleFilterInvalidation();
 
 protected:
     void buildHierarchy(const QStringList &data, QAbstractItemModel *model);
@@ -3408,6 +3410,131 @@ void tst_QSortFilterProxyModel::testResetInternalData()
     model.setStringList(QStringList() << "Spam" << "Eggs");
 
 }
+
+class FilterProxy : public QSortFilterProxyModel
+{
+    Q_OBJECT
+public:
+    FilterProxy(QObject *parent = 0)
+      : QSortFilterProxyModel(parent),
+        mode(false)
+    {
+
+    }
+
+public slots:
+    void setMode(bool on)
+    {
+        mode = on;
+        invalidateFilter();
+    }
+
+protected:
+    virtual bool filterAcceptsRow ( int source_row, const QModelIndex & source_parent ) const
+    {
+        if (mode) {
+            if (!source_parent.isValid()) {
+                return true;
+            } else {
+                return (source_row % 2) != 0;
+            }
+        } else {
+            if (!source_parent.isValid()) {
+                return source_row >= 2 && source_row < 10;
+            } else {
+                return true;
+            }
+        }
+    }
+
+private:
+    bool mode;
+};
+
+void tst_QSortFilterProxyModel::hierarchyFilterInvalidation()
+{
+    QStandardItemModel model;
+    for (int i = 0; i < 10; ++i) {
+        QStandardItem *child = new QStandardItem(QString("Row %1").arg(i));
+        for (int j = 0; j < 1; ++j) {
+            child->appendRow(new QStandardItem(QString("Row %1/%2").arg(i).arg(j)));
+        }
+        model.appendRow(child);
+    }
+
+    FilterProxy proxy;
+    proxy.setSourceModel(&model);
+
+    QTreeView view;
+    view.setModel(&proxy);
+
+    view.setCurrentIndex(proxy.index(2, 0).child(0, 0));
+
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    proxy.setMode(true);
+}
+
+
+class FilterProxy2 : public QSortFilterProxyModel
+{
+    Q_OBJECT
+public:
+    FilterProxy2(QObject *parent = 0)
+      : QSortFilterProxyModel(parent),
+        mode(false)
+    {
+
+    }
+
+public slots:
+    void setMode(bool on)
+    {
+        mode = on;
+        invalidateFilter();
+    }
+
+protected:
+    virtual bool filterAcceptsRow ( int source_row, const QModelIndex & source_parent ) const
+    {
+        if (source_parent.isValid()) {
+            return true;
+        } else {
+            if (0 == source_row) {
+                return true;
+            } else {
+                return !mode;
+            }
+        }
+    }
+
+private:
+    bool mode;
+};
+
+void tst_QSortFilterProxyModel::simpleFilterInvalidation()
+{
+    QStandardItemModel model;
+    for (int i = 0; i < 2; ++i) {
+        QStandardItem *child = new QStandardItem(QString("Row %1").arg(i));
+        child->appendRow(new QStandardItem("child"));
+        model.appendRow(child);
+    }
+
+    FilterProxy2 proxy;
+    proxy.setSourceModel(&model);
+
+    QTreeView view;
+    view.setModel(&proxy);
+
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    proxy.setMode(true);
+    model.insertRow(0, new QStandardItem("extra"));
+}
+
 
 QTEST_MAIN(tst_QSortFilterProxyModel)
 #include "tst_qsortfilterproxymodel.moc"

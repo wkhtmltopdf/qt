@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -73,6 +73,10 @@ struct Example {
     unsigned priority; // 0-highest
     int upTimeMS;
 };
+
+static const char designerC[] = "Designer";
+static const char linguistC[] = "Linguist";
+static const char qtDemoC[] = "qtdemo";
 
 const struct Example examples[] = {
     {"animation/animatedtiles Example", "animation/animatedtiles", "animatedtiles", 0, -1},
@@ -244,8 +248,8 @@ public:
     typedef QPair<const char*, AppLaunchData> TestDataEntry;
     typedef QList<TestDataEntry> TestDataEntries;
 
-    enum { TestTools = 0x1, TestDemo = 0x2, TestExamples = 0x4,
-           TestAll = TestTools|TestDemo|TestExamples };
+    enum { TestTools = 0x1, TestQtDemo = 0x2, TestDemos = 0x4, TestExamples = 0x8,
+           TestAll = TestTools|TestQtDemo|TestDemos|TestExamples };
 
     tst_GuiAppLauncher();
 
@@ -261,26 +265,48 @@ private:
     QString workingDir() const;
 
 private:
+    static QString guiBinary(QString in);
+    inline QString toolsBinary(const QString &tool) const
+        { return m_binPath + tst_GuiAppLauncher::guiBinary(tool); }
+    QString sampleBinary(const QString &root, const Example &e) const;
+    TestDataEntries exampleData(unsigned priority, const QString &path,
+                                const Example *exArray, unsigned n) const;
+
     bool runApp(const AppLaunchData &data, QString *errorMessage) const;
     TestDataEntries testData() const;
 
-    const unsigned m_testMask;
+    unsigned m_testMask;
+    const bool m_debugBuild;
     const unsigned m_examplePriority;
     const QString m_dir;
+    const QString m_binPath;
+    const QString m_examplesPath;
+    const QString m_demosPath;
     const QSharedPointer<WindowManager> m_wm;
 };
 
-// Test mask from environment as test lib does not allow options.
-static inline unsigned testMask()
+// Cross platform galore!
+QString tst_GuiAppLauncher::guiBinary(QString in)
 {
-    unsigned testMask = tst_GuiAppLauncher::TestAll;
-    if (!qgetenv("QT_TEST_NOTOOLS").isEmpty())
-        testMask &= ~ tst_GuiAppLauncher::TestTools;
-    if (!qgetenv("QT_TEST_NOEXAMPLES").isEmpty())
-        testMask &= ~tst_GuiAppLauncher::TestExamples;
-    if (!qgetenv("QT_TEST_NODEMOS").isEmpty())
-        testMask &= ~tst_GuiAppLauncher::TestDemo;
-    return testMask;
+#ifdef Q_OS_MAC
+    return in + QLatin1String(".app/Contents/MacOS/") + in;
+#endif
+    in[0] = in.at(0).toLower();
+#ifdef Q_OS_WIN
+    in += QLatin1String(".exe");
+#endif
+    return in;
+}
+
+QString tst_GuiAppLauncher::sampleBinary(const QString &root, const Example &e) const
+{
+
+    QString binary = root + QLatin1String(e.directory) + '/';
+#ifdef Q_OS_WIN
+    binary += m_debugBuild ? QLatin1String("debug/") : QLatin1String("release/");
+#endif
+    binary += guiBinary(QLatin1String(e.binary));
+    return binary;
 }
 
 static inline unsigned testExamplePriority()
@@ -296,9 +322,13 @@ static inline unsigned testExamplePriority()
 }
 
 tst_GuiAppLauncher::tst_GuiAppLauncher() :
-    m_testMask(testMask()),
+    m_testMask(tst_GuiAppLauncher::TestAll),
+    m_debugBuild(QLibraryInfo::buildKey().contains(QLatin1String("debug"))),
     m_examplePriority(testExamplePriority()),
     m_dir(QLatin1String(SRCDIR)),
+    m_binPath(QLibraryInfo::location(QLibraryInfo::BinariesPath) + QLatin1Char('/')),
+    m_examplesPath(QLibraryInfo::location(QLibraryInfo::ExamplesPath) + QLatin1Char('/')),
+    m_demosPath(QLibraryInfo::location(QLibraryInfo::DemosPath) + QLatin1Char('/')),
     m_wm(WindowManager::create())
 {
 }
@@ -322,6 +352,26 @@ void tst_GuiAppLauncher::initTestCase()
         message = QString::fromLatin1("Invalid working directory %1").arg(m_dir);
         QFAIL(message.toLocal8Bit().constData());
     }
+    if (!QFileInfo(toolsBinary(QLatin1String(designerC))).exists()) {
+        m_testMask &= ~TestTools;
+        qWarning("Not testing tools.");
+    }
+    if (!QFileInfo(toolsBinary(QLatin1String(qtDemoC))).exists()) {
+        m_testMask &= ~TestQtDemo;
+        qWarning("Not testing qtdemo.");
+    }
+    const QString firstExampleBinary = sampleBinary(m_examplesPath, examples[0]);
+    if (!QFileInfo(firstExampleBinary).exists()) {
+        m_testMask &= ~TestExamples;
+        qWarning("Not testing examples, '%s' cannot be found.",
+                 qPrintable(QDir::toNativeSeparators(firstExampleBinary)));
+    }
+    const QString firstDemoBinary = sampleBinary(m_demosPath, demos[0]);
+    if (!QFileInfo(firstDemoBinary).exists()) {
+        m_testMask &= ~TestDemos;
+        qWarning("Not testing demos, '%s' cannot be found.",
+                 qPrintable(QDir::toNativeSeparators(firstDemoBinary)));
+    }
 }
 
 void tst_GuiAppLauncher::run()
@@ -331,20 +381,26 @@ void tst_GuiAppLauncher::run()
     const bool rc = runApp(data, &errorMessage);
     if (!rc) // Wait for windows to disappear after kill
         WindowManager::sleepMS(500);
+#if defined(Q_OS_LINUX) && defined(__i386__) // Ubuntu 10.04 x86
+    QEXPECT_FAIL("Qt Designer", "QTBUG-27938", Continue);
+#endif
+#if defined(Q_OS_LINUX) && defined(__x86_64__) // Ubuntu 11.10 x64
+    QEXPECT_FAIL("Qt Designer", "QTBUG-27938", Continue);
+    QEXPECT_FAIL("Qt Linguist", "QTBUG-27938", Continue);
+    QEXPECT_FAIL("Qt Demo", "QTBUG-27938", Continue);
+    QEXPECT_FAIL("Browser Demo", "QTBUG-27938", Continue);
+#endif
+#if defined(Q_OS_WIN)
+    QEXPECT_FAIL("Qt Demo", "QTBUG-27938", Continue);
+#endif
+#if defined(Q_OS_WIN) && defined(QT_BUILD_INTERNAL)
+    QEXPECT_FAIL("Qt Demo", "QTBUG-27938", Continue);
+    QEXPECT_FAIL("Composition Demo", "QTBUG-27938", Continue);
+    QEXPECT_FAIL("Sub-Attac Demo", "QTBUG-27938", Continue);
+    QEXPECT_FAIL("graphicsview/padnavigator Example", "QTBUG-27938", Continue);
+    QEXPECT_FAIL("painting/svgviewer Example", "QTBUG-27938", Continue);
+#endif
     QVERIFY2(rc, qPrintable(errorMessage));
-}
-
-// Cross platform galore!
-static inline QString guiBinary(QString in)
-{
-#ifdef Q_OS_MAC
-    return in + QLatin1String(".app/Contents/MacOS/") + in;
-#endif
-    in[0] = in.at(0).toLower();
-#ifdef Q_OS_WIN
-    in += QLatin1String(".exe");
-#endif
-    return in;
 }
 
 void tst_GuiAppLauncher::run_data()
@@ -355,13 +411,12 @@ void tst_GuiAppLauncher::run_data()
 }
 
 // Read out the examples array structures and convert to test data.
-static tst_GuiAppLauncher::TestDataEntries exampleData(unsigned priority,
-                                                       const QString &path,
-                                                       bool debug,
-                                                       const Example *exArray,
-                                                       unsigned n)
+tst_GuiAppLauncher::TestDataEntries
+    tst_GuiAppLauncher::exampleData(unsigned priority,
+                                    const QString &path,
+                                    const Example *exArray,
+                                    unsigned n) const
 {
-    Q_UNUSED(debug)
     tst_GuiAppLauncher::TestDataEntries rc;
     const QChar slash = QLatin1Char('/');
     AppLaunchData data;
@@ -369,13 +424,8 @@ static tst_GuiAppLauncher::TestDataEntries exampleData(unsigned priority,
         const Example &example = exArray[e];
         if (example.priority <= priority) {
             data.clear();
-            const QString examplePath = path + slash + QLatin1String(example.directory);
-            data.binary = examplePath + slash;
-#ifdef Q_OS_WIN
-            data.binary += debug? QLatin1String("debug/") : QLatin1String("release/");
-#endif
-            data.binary += guiBinary(QLatin1String(example.binary));
-            data.workingDirectory = examplePath;
+            data.binary = sampleBinary(path, example);
+            data.workingDirectory =  path + slash + QLatin1String(example.directory);
             if (example.upTimeMS > 0)
                 data.upTimeMS = example.upTimeMS;
             rc.append(tst_GuiAppLauncher::TestDataEntry(example.name, data));
@@ -387,42 +437,32 @@ static tst_GuiAppLauncher::TestDataEntries exampleData(unsigned priority,
 tst_GuiAppLauncher::TestDataEntries tst_GuiAppLauncher::testData() const
 {
     TestDataEntries rc;
-    const QChar slash = QLatin1Char('/');
-    const QString binPath = QLibraryInfo::location(QLibraryInfo::BinariesPath) + slash;
-    const bool debug = QLibraryInfo::buildKey().contains(QLatin1String("debug"));
-    Q_UNUSED(debug)
-
     AppLaunchData data;
 
     if (m_testMask & TestTools) {
-        data.binary = binPath + guiBinary(QLatin1String("Designer"));
+        data.binary = toolsBinary(QLatin1String(designerC));
         data.args.append(m_dir + QLatin1String("test.ui"));
         rc.append(TestDataEntry("Qt Designer", data));
 
         data.clear();
-        data.binary = binPath + guiBinary(QLatin1String("Linguist"));
+        data.binary = toolsBinary(QLatin1String(linguistC));
         data.splashScreen = true;
         data.upTimeMS = 5000; // Slow loading
         data.args.append(m_dir + QLatin1String("test.ts"));
         rc.append(TestDataEntry("Qt Linguist", data));
     }
 
-    if (m_testMask & TestDemo) {
+    if (m_testMask & TestQtDemo) {
         data.clear();
         data.upTimeMS = 5000; // Startup animation
-        data.binary = binPath + guiBinary(QLatin1String("qtdemo"));
+        data.binary = toolsBinary(QLatin1String(qtDemoC));
         rc.append(TestDataEntry("Qt Demo", data));
-
-        const QString demosPath = QLibraryInfo::location(QLibraryInfo::DemosPath);
-        if (!demosPath.isEmpty())
-            rc += exampleData(m_examplePriority, demosPath, debug, demos, sizeof(demos)/sizeof(Example));
     }
 
-    if (m_testMask & TestExamples) {
-        const QString examplesPath = QLibraryInfo::location(QLibraryInfo::ExamplesPath);
-        if (!examplesPath.isEmpty())
-            rc += exampleData(m_examplePriority, examplesPath, debug, examples, sizeof(examples)/sizeof(Example));
-    }
+    if (m_testMask & TestDemos)
+            rc += exampleData(m_examplePriority, m_demosPath, demos, sizeof(demos)/sizeof(Example));
+    if (m_testMask & TestExamples)
+        rc += exampleData(m_examplePriority, m_examplesPath, examples, sizeof(examples)/sizeof(Example));
     qDebug("Running %d tests...", rc.size());
     return rc;
 }

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -56,7 +56,9 @@ static QBlittable::Capabilities dfb_blitter_capabilities()
     return QBlittable::Capabilities(QBlittable::SolidRectCapability
                                     |QBlittable::SourcePixmapCapability
                                     |QBlittable::SourceOverPixmapCapability
-                                    |QBlittable::SourceOverScaledPixmapCapability);
+                                    |QBlittable::SourceOverScaledPixmapCapability
+                                    |QBlittable::AlphaFillRectCapability
+                                    |QBlittable::OpacityPixmapCapability);
 }
 
 QDirectFbBlitter::QDirectFbBlitter(const QSize &rect, IDirectFBSurface *surface)
@@ -64,17 +66,25 @@ QDirectFbBlitter::QDirectFbBlitter(const QSize &rect, IDirectFBSurface *surface)
         , m_surface(surface)
 {
     m_surface->AddRef(m_surface.data());
+
+    DFBSurfaceCapabilities surfaceCaps;
+    m_surface->GetCapabilities(m_surface.data(), &surfaceCaps);
+    m_premult = (surfaceCaps & DSCAPS_PREMULTIPLIED);
 }
 
 QDirectFbBlitter::QDirectFbBlitter(const QSize &rect, bool alpha)
-    : QBlittable(rect, dfb_blitter_capabilities())
+    : QBlittable(rect, dfb_blitter_capabilities()), m_premult(false)
 {
     DFBSurfaceDescription surfaceDesc;
     memset(&surfaceDesc,0,sizeof(DFBSurfaceDescription));
     surfaceDesc.width = rect.width();
     surfaceDesc.height = rect.height();
 
+    // force alpha format to get AlphaFillRectCapability and ExtendedPixmapCapability support
+    alpha = true;
+
     if (alpha) {
+        m_premult = true;
         surfaceDesc.caps = DSCAPS_PREMULTIPLIED;
         surfaceDesc.pixelformat = QDirectFbBlitter::alphaPixmapFormat();
         surfaceDesc.flags = DFBSurfaceDescriptionFlags(DSDESC_WIDTH | DSDESC_HEIGHT | DSDESC_CAPS | DSDESC_PIXELFORMAT);
@@ -82,7 +92,6 @@ QDirectFbBlitter::QDirectFbBlitter(const QSize &rect, bool alpha)
         surfaceDesc.flags = DFBSurfaceDescriptionFlags(DSDESC_WIDTH | DSDESC_HEIGHT | DSDESC_PIXELFORMAT);
         surfaceDesc.pixelformat = QDirectFbBlitter::pixmapFormat();
     }
-
 
     IDirectFB *dfb = QDirectFbConvenience::dfbInterface();
     dfb->CreateSurface(dfb , &surfaceDesc, m_surface.outPtr());
@@ -111,49 +120,94 @@ DFBSurfacePixelFormat QDirectFbBlitter::selectPixmapFormat(bool withAlpha)
 
 void QDirectFbBlitter::fillRect(const QRectF &rect, const QColor &color)
 {
-    m_surface->SetColor(m_surface.data(), color.red(), color.green(), color.blue(), color.alpha());
-//    When the blitter api supports non opaque blits, also remember to change
-//    qpixmap_blitter.cpp::fill
-//    DFBSurfaceDrawingFlags drawingFlags = color.alpha() ? DSDRAW_BLEND : DSDRAW_NOFX;
-//    m_surface->SetDrawingFlags(m_surface, drawingFlags);
-    m_surface->SetDrawingFlags(m_surface.data(), DSDRAW_NOFX);
-    m_surface->FillRectangle(m_surface.data(), rect.x(), rect.y(),
-                              rect.width(), rect.height());
+    alphaFillRect(rect, color, QPainter::CompositionMode_Source);
 }
 
 void QDirectFbBlitter::drawPixmap(const QRectF &rect, const QPixmap &pixmap, const QRectF &srcRect)
 {
-    QPixmapData *data = pixmap.pixmapData();
-    Q_ASSERT(data->width() && data->height());
-    Q_ASSERT(data->classId() == QPixmapData::BlitterClass);
-    QBlittablePixmapData *blitPm = static_cast<QBlittablePixmapData*>(data);
+    drawPixmapOpacity(rect, pixmap, srcRect, QPainter::CompositionMode_SourceOver, 1.0);
+}
+
+void QDirectFbBlitter::alphaFillRect(const QRectF &rect, const QColor &color, QPainter::CompositionMode cmode)
+{
+    int x, y, w, h;
+    DFBResult result;
+
+    // check paramters
+    rect.toRect().getRect(&x, &y ,&w, &h);
+    if ((w <= 0) || (h <= 0)) return;
+
+    if ((cmode == QPainter::CompositionMode_Source) || (color.alpha() == 255)) {
+        // CompositionMode_Source case or CompositionMode_SourceOver with opaque color
+
+        m_surface->SetDrawingFlags(m_surface.data(),
+            DFBSurfaceDrawingFlags(m_premult ? (DSDRAW_NOFX | DSDRAW_SRC_PREMULTIPLY) : DSDRAW_NOFX));
+        m_surface->SetPorterDuff(m_surface.data(), DSPD_SRC);
+
+    } else {
+        // CompositionMode_SourceOver case
+
+        // check if operation is useless
+        if (color.alpha() == 0)
+            return;
+
+        m_surface->SetDrawingFlags(m_surface.data(),
+            DFBSurfaceDrawingFlags(m_premult ? (DSDRAW_BLEND | DSDRAW_SRC_PREMULTIPLY) : DSDRAW_BLEND));
+        m_surface->SetPorterDuff(m_surface.data(), DSPD_SRC_OVER);
+    }
+
+    // set color
+    m_surface->SetColor(m_surface.data(), color.red(), color.green(), color.blue(), color.alpha());
+
+    // perform fill
+    result = m_surface->FillRectangle(m_surface.data(), x, y, w, h);
+    if (result != DFB_OK)
+        DirectFBError("QDirectFBBlitter::alphaFillRect()", result);
+}
+
+void QDirectFbBlitter::drawPixmapOpacity(const QRectF &rect, const QPixmap &pixmap, const QRectF &subrect, QPainter::CompositionMode cmode, qreal opacity)
+{
+    QRect sQRect = subrect.toRect();
+    QRect dQRect = rect.toRect();
+    DFBRectangle sRect = { sQRect.x(), sQRect.y(), sQRect.width(), sQRect.height() };
+    DFBRectangle dRect = { dQRect.x(), dQRect.y(), dQRect.width(), dQRect.height() };
+    DFBResult result;
+
+    // skip if dst too small
+    if ((dRect.w <= 0) || (dRect.h <= 0)) return;
+
+    // correct roundings if needed
+    if (sRect.w <= 0) sRect.w = 1;
+    if (sRect.h <= 0) sRect.h = 1;
+
+    QBlittablePixmapData *blitPm = static_cast<QBlittablePixmapData*>(pixmap.pixmapData());
     QDirectFbBlitter *dfbBlitter = static_cast<QDirectFbBlitter *>(blitPm->blittable());
     dfbBlitter->unlock();
 
     IDirectFBSurface *s = dfbBlitter->m_surface.data();
 
-    DFBSurfaceBlittingFlags blittingFlags = DSBLIT_NOFX;
-    DFBSurfacePorterDuffRule porterDuff = DSPD_SRC;
-    if (pixmap.hasAlpha()) {
-        blittingFlags = DSBLIT_BLEND_ALPHACHANNEL;
-        porterDuff = DSPD_SRC_OVER;
+    DFBSurfaceBlittingFlags blittingFlags = DFBSurfaceBlittingFlags(DSBLIT_BLEND_ALPHACHANNEL);
+    DFBSurfacePorterDuffRule porterDuff = (cmode == QPainter::CompositionMode_SourceOver) ? DSPD_SRC_OVER : DSPD_SRC;
+
+    if (opacity != 1.0)
+    {
+        blittingFlags = DFBSurfaceBlittingFlags(blittingFlags | DSBLIT_BLEND_COLORALPHA | (m_premult ? DSBLIT_SRC_PREMULTCOLOR : 0));
+        m_surface->SetColor(m_surface.data(), 0xff, 0xff, 0xff, (u8) (opacity * 255.0));
     }
 
     m_surface->SetBlittingFlags(m_surface.data(), DFBSurfaceBlittingFlags(blittingFlags));
     m_surface->SetPorterDuff(m_surface.data(), porterDuff);
-    m_surface->SetDstBlendFunction(m_surface.data(), DSBF_INVSRCALPHA);
 
-    const DFBRectangle sRect = { srcRect.x(), srcRect.y(), srcRect.width(), srcRect.height() };
+    if (cmode == QPainter::CompositionMode_SourceOver)
+        m_surface->SetDstBlendFunction(m_surface.data(), DSBF_INVSRCALPHA);
 
-    DFBResult result;
-    if (rect.width() == srcRect.width() && rect.height() == srcRect.height())
-        result = m_surface->Blit(m_surface.data(), s, &sRect, rect.x(), rect.y());
-    else {
-        const DFBRectangle dRect = { rect.x(), rect.y(), rect.width(), rect.height() };
+    if ((sRect.w == dRect.w) && (sRect.h == dRect.h))
+        result = m_surface->Blit(m_surface.data(), s, &sRect, dRect.x, dRect.y);
+    else
         result = m_surface->StretchBlit(m_surface.data(), s, &sRect, &dRect);
-    }
+
     if (result != DFB_OK)
-        DirectFBError("QDirectFBBlitter::drawPixmap()", result);
+        DirectFBError("QDirectFBBlitter::drawPixmapExtended()", result);
 }
 
 QImage *QDirectFbBlitter::doLock()
@@ -248,7 +302,7 @@ bool QDirectFbBlitterPlatformPixmap::fromFile(const QString &filename, const cha
 
     // Deal with resources
     if (filename.startsWith(QLatin1Char(':')))
-        return QBlittablePlatformPixmap::fromFile(filename, format, flags);
+        return QBlittablePixmapData::fromFile(filename, format, flags);
 
     // Try to use directfb to load it.
     DFBDataBufferDescription description;

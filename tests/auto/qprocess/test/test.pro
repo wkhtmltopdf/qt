@@ -18,6 +18,8 @@ win32: {
 
 
 QT = core
+CONFIG += console
+CONFIG -= app-bundle
 
 !symbian: {
     QT += network
@@ -122,5 +124,3 @@ symbian: {
 
    DEPLOYMENT += binDep
 }
-
-win32|mac*:CONFIG+=insignificant_test # QTQAINFRA-428

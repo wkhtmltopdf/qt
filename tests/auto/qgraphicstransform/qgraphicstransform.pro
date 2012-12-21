@@ -2,4 +2,4 @@ load(qttest_p4)
 SOURCES  += tst_qgraphicstransform.cpp
 CONFIG += parallel_test
 
-CONFIG+=insignificant_test # QTQAINFRA-428
+linux-*:contains(QT_CONFIG,release):DEFINES+=MAY_HIT_QTBUG_20661

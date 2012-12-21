@@ -4,9 +4,17 @@ include(../../qpluginbase.pri)
 QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/platforms
 QT += opengl
 
+blackberry {
+    # Unomment this to enable screen event handling
+    # through a dedicated thread.
+    # DEFINES += QQNX_SCREENEVENTTHREAD
+} else {
+    DEFINES += QBB_SCREENEVENTTHREAD
+}
+
 SOURCES =   main.cpp \
             qbbbuffer.cpp \
-            qbbeventthread.cpp \
+            qbbscreeneventthread.cpp \
             qbbglcontext.cpp \
             qbbglwindowsurface.cpp \
             qbbinputcontext.cpp \
@@ -16,16 +24,17 @@ SOURCES =   main.cpp \
             qbbscreen.cpp \
             qbbwindow.cpp \
             qbbrasterwindowsurface.cpp \
-            qbbvirtualkeyboard.cpp \
+            qbbvirtualkeyboardpps.cpp \
             qbbclipboard.cpp \
             qbblocalethread.cpp \
             qbbrootwindow.cpp \
             qbbscreeneventhandler.cpp \
             qbbabstractvirtualkeyboard.cpp \
-            qbbnativeinterface.cpp
+            qbbnativeinterface.cpp \
+            qbbbuttoneventnotifier.cpp
 
 HEADERS =   qbbbuffer.h \
-            qbbeventthread.h \
+            qbbscreeneventthread.h \
             qbbinputcontext.h \
             qbbintegration.h \
             qbbnavigatoreventhandler.h \
@@ -35,13 +44,22 @@ HEADERS =   qbbbuffer.h \
             qbbscreen.h \
             qbbwindow.h \
             qbbrasterwindowsurface.h \
-            qbbvirtualkeyboard.h \
+            qbbvirtualkeyboardpps.h \
             qbbclipboard.h \
             qbblocalethread.h \
             qbbrootwindow.h \
             qbbscreeneventhandler.h \
             qbbabstractvirtualkeyboard.h \
-            qbbnativeinterface.h
+            qbbnativeinterface.h \
+            qbbbuttoneventnotifier.h
+
+blackberry {
+    SOURCES += qbbbpseventfilter.cpp \
+               qbbvirtualkeyboardbps.cpp
+
+    HEADERS += qbbbpseventfilter.h \
+               qbbvirtualkeyboardbps.h
+}
 
 QMAKE_CXXFLAGS += -I./private
 

@@ -1,26 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -143,7 +143,7 @@ for your platform from the following list.
     \o \l{Configuring Qt}
     \o \l{How to Learn Qt}
     \o \l{Tutorials}
-    \o \l{Developer Zone}
+    \o \l{Developer Network}
     \o \l{Deploying Qt Applications}
     \endlist
 
@@ -263,7 +263,7 @@ for your platform from the following list.
     \list
     \o \l{How to Learn Qt}
     \o \l{Tutorials}
-    \o \l{Developer Zone}
+    \o \l{Developer Network}
     \o \l{Deploying Qt Applications}
     \endlist
 
@@ -386,7 +386,7 @@ must be run as root.
     \list
     \o \l{How to Learn Qt}
     \o \l{Tutorials}
-    \o \l{Developer Zone}
+    \o \l{Developer Network}
     \o \l{Deploying Qt Applications}
     \endlist
 
@@ -474,7 +474,7 @@ in the \l{Qt for Windows CE Requirements} document.
     \list
     \o \l{How to Learn Qt}
     \o \l{Tutorials}
-    \o \l{Developer Zone}
+    \o \l{Developer Network}
     \o \l{Deploying Qt Applications}
     \endlist
 
@@ -504,7 +504,7 @@ in the \l{Qt for Windows CE Requirements} document.
 
 \tableofcontents
 
-    Qt for Symbian binary packages (SIS files) are available from the \l 
+    Qt for Symbian binary packages (SIS files) are available from the \l
     {http://qt.nokia.com/downloads}{Qt SDK}.
 
 */
@@ -516,8 +516,8 @@ in the \l{Qt for Windows CE Requirements} document.
 \previouspage Installation
 \tableofcontents
 
-    \l {http://qt.nokia.com/downloads}{Qt SDK} provides all the necessary tools 
-    and libraries for developing Qt applications. However, if you want to build 
+    \l {http://qt.nokia.com/downloads}{Qt SDK} provides all the necessary tools
+    and libraries for developing Qt applications. However, if you want to build
     Qt itself for Symbian, follow the instructions below.
 
 Qt for the Symbian platform has some requirements that are given in more detail
@@ -607,31 +607,31 @@ the Symbian platform from scratch.
     Congratulations, Qt is now ready to use.
 
 \section1 Step 7: Installing Qt Libraries on the Device
-    
+
     To run a Qt application on a device, it must have Qt libraries installed.
-    
+
     Symbian devices have a pre-installed Qt as follows:
     \list
     \o Symbian Anna devices have the pre-installed Qt, Qt Mobility, and Qt Webkit.
     \o Symbian Belle and later devices have the pre-installed Qt on the device firmware.
     \endlist
-    
+
     \l {http://www.developer.nokia.com/Community/Wiki/Nokia_Smart_Installer_for_Symbian}
-    {Nokia Smart Installer for Symbian} deploys the required Qt libraries to supported S60 
+    {Nokia Smart Installer for Symbian} deploys the required Qt libraries to supported S60
     and Symbian devices if the libraries are not pre-installed.
-    
+
     Nokia Developer site's \l {http://www.developer.nokia.com/Devices/Device_specifications/?filter1=qt}
     {Device specifications} provide information on which devices have a
     pre-installed Qt and the used Qt version.
-    
+
     To create your own Qt installation package, do as follows:
 
     \snippet doc/src/snippets/code/doc_src_installation.qdoc 29
 
-    The Qt libraries are built with "All -Tcb" capability, so they can support 
-    all types of applications. If you don't have a suitable certificate, you can 
+    The Qt libraries are built with "All -Tcb" capability, so they can support
+    all types of applications. If you don't have a suitable certificate, you can
     patch the binaries in either of the following ways:
-    
+
     \list
     \o If you have no certificate, build a self-signed Qt:
     \snippet doc/src/snippets/code/doc_src_installation.qdoc 34
@@ -1286,11 +1286,11 @@ We hope you will enjoy using Qt.
     \brief Setting up the Symbian platform environment for Qt.
     \previouspage General Qt Requirements
 
-    \l {http://qt.nokia.com/downloads}{Qt SDK} provides all the necessary tools 
-    and libraries for developing Qt applications. However, if you want to build 
+    \l {http://qt.nokia.com/downloads}{Qt SDK} provides all the necessary tools
+    and libraries for developing Qt applications. However, if you want to build
     Qt itself for Symbian, follow the instructions below.
-    
-    Qt for the Symbian platform requires the following software installed on 
+
+    Qt for the Symbian platform requires the following software installed on
     your development PC:
     \list
         \o \l{http://www.forum.nokia.com/Library/Tools_and_downloads/Other/Carbide.c++/}{Carbide.c++ v2.3.0 or higher recommended}.
@@ -1471,8 +1471,6 @@ We hope you will enjoy using Qt.
     \row   \o \c {-no-gif} \o Do not compile GIF reading support.
     \o This option denotes a default value and needs to be evaluated.
     If the evaluation succeeds, the feature is included.
-    \row   \o \c {-qt-gif} \o Compile GIF reading support. \o See also
-    src/gui/image/qgifhandler_p.h
     \row   \o \c {-no-libpng} \o Do not compile PNG support. \o
     \row   \o \c {-qt-libpng} \o Use the libpng bundled with Qt.
     \o This option denotes a default value and needs to be evaluated.

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -44,8 +44,68 @@
 #include <QtCore/qdatastream.h>
 #include <QtCore/qurl.h>
 #include <QtCore/qtimer.h>
+#include <QDebug>
 
+#ifdef CUSTOM_DECLARATIVE_DEBUG_TRACE_INSTANCE
+
+namespace {
+
+    class GlobalInstanceDeleter
+    {
+    private:
+        QBasicAtomicPointer<QDeclarativeDebugTrace> &m_pointer;
+    public:
+        GlobalInstanceDeleter(QBasicAtomicPointer<QDeclarativeDebugTrace> &p)
+        : m_pointer(p)
+        {}
+        ~GlobalInstanceDeleter()
+        {
+            delete m_pointer;
+            m_pointer = 0;
+        }
+    };
+
+    QBasicAtomicPointer<QDeclarativeDebugTrace> s_globalInstance = Q_BASIC_ATOMIC_INITIALIZER(0);
+}
+
+
+static QDeclarativeDebugTrace *traceInstance()
+{
+    return QDeclarativeDebugTrace::globalInstance();
+}
+
+QDeclarativeDebugTrace *QDeclarativeDebugTrace::globalInstance()
+{
+    if (!s_globalInstance) {
+        // create default QDeclarativeDebugTrace instance if it is not explicitly set by setGlobalInstance(QDeclarativeDebugTrace *instance)
+        // thread safe implementation
+        QDeclarativeDebugTrace *x = new QDeclarativeDebugTrace();
+        if (!s_globalInstance.testAndSetOrdered(0, x))
+            delete x;
+        else
+            static GlobalInstanceDeleter cleanup(s_globalInstance);
+    }
+    return s_globalInstance;
+}
+
+/*!
+ *  Set custom QDeclarativeDebugTrace instance \a custom_instance.
+ *  Function fails if QDeclarativeDebugTrace::globalInstance() was called before.
+ *  QDeclarativeDebugTrace framework takes ownership of the custom instance.
+ */
+void QDeclarativeDebugTrace::setGlobalInstance(QDeclarativeDebugTrace *custom_instance)
+{
+    if (!s_globalInstance.testAndSetOrdered(0, custom_instance)) {
+        qWarning() << "QDeclarativeDebugTrace::setGlobalInstance() - instance already set.";
+        delete custom_instance;
+    } else {
+        static GlobalInstanceDeleter cleanup(s_globalInstance);
+    }
+}
+
+#else // CUSTOM_DECLARATIVE_DEBUG_TRACE_INSTANCE
 Q_GLOBAL_STATIC(QDeclarativeDebugTrace, traceInstance);
+#endif
 
 // convert to a QByteArray that can be sent to the debug client
 // use of QDataStream can skew results if m_deferredSend == false

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtDBus module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -50,6 +50,7 @@
 
 #include "qdbusargument.h"
 #include "qdbusconnection_p.h"
+#include "qdbusconnectionmanager_p.h"
 #include "qdbusinterface_p.h"
 #include "qdbusmessage.h"
 #include "qdbusmetatype.h"
@@ -385,16 +386,21 @@ static void qDBusNewConnection(DBusServer *server, DBusConnection *connection, v
 
     // keep the connection alive
     q_dbus_connection_ref(connection);
-    QDBusConnectionPrivate *d = static_cast<QDBusConnectionPrivate *>(data);
+    QDBusConnectionPrivate *serverConnection = static_cast<QDBusConnectionPrivate *>(data);
+
+    QDBusConnectionPrivate *newConnection = new QDBusConnectionPrivate(serverConnection->parent());
+    QMutexLocker locker(&QDBusConnectionManager::instance()->mutex);
+    QDBusConnectionManager::instance()->setConnection(QLatin1String("QDBusServer-") + QString::number(reinterpret_cast<qulonglong>(newConnection)), newConnection);
+    serverConnection->serverConnectionNames << newConnection->name;
 
     // setPeer does the error handling for us
     QDBusErrorInternal error;
-    d->setPeer(connection, error);
+    newConnection->setPeer(connection, error);
 
-    QDBusConnection retval = QDBusConnectionPrivate::q(d);
+    QDBusConnection retval = QDBusConnectionPrivate::q(newConnection);
 
     // make QDBusServer emit the newConnection signal
-    d->serverConnection(retval);
+    serverConnection->serverConnection(retval);
 }
 
 } // extern "C"
@@ -911,10 +917,8 @@ void QDBusConnectionPrivate::deliverCall(QObject *object, int /*flags*/, const Q
         }
     }
 
-    bool takesMessage = false;
     if (metaTypes.count() > i && metaTypes[i] == QDBusMetaTypeId::message) {
         params.append(const_cast<void*>(static_cast<const void*>(&msg)));
-        takesMessage = true;
         ++i;
     }
 
@@ -1682,24 +1686,23 @@ void QDBusConnectionPrivate::setPeer(DBusConnection *c, const QDBusErrorInternal
 static QDBusConnection::ConnectionCapabilities connectionCapabilies(DBusConnection *connection)
 {
     QDBusConnection::ConnectionCapabilities result = 0;
+    typedef dbus_bool_t (*can_send_type_t)(DBusConnection *, int);
+    static can_send_type_t can_send_type = 0;
 
-#if defined(QT_LINKED_LIBDBUS) && DBUS_VERSION < 0x010400
-    // no capabilities are possible
-#else
-# if !defined(QT_LINKED_LIBDBUS)
-    // run-time check if the next functions are available
-    int major, minor, micro;
-    q_dbus_get_version(&major, &minor, &micro);
-    if (major == 1 && minor < 4)
-        return result;
+#if defined(QT_LINKED_LIBDBUS)
+# if DBUS_VERSION-0 >= 0x010400
+    can_send_type = dbus_connection_can_send_type;
 # endif
+#else
+    // run-time check if the next functions are available
+    can_send_type = (can_send_type_t)qdbus_resolve_conditionally("dbus_connection_can_send_type");
+#endif
 
 #ifndef DBUS_TYPE_UNIX_FD
 # define DBUS_TYPE_UNIX_FD int('h')
 #endif
-    if (q_dbus_connection_can_send_type(connection, DBUS_TYPE_UNIX_FD))
+    if (can_send_type && can_send_type(connection, DBUS_TYPE_UNIX_FD))
         result |= QDBusConnection::UnixFileDescriptorPassing;
-#endif
 
     return result;
 }

@@ -1,36 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 - 2012 Research In Motion
-**
-** Contact: Research In Motion <blackberry-qt@qnx.com>
-** Contact: Klarälvdalens Datakonsult AB <info@kdab.com>
+** Copyright (C) 2011 - 2012 Research In Motion <blackberry-qt@qnx.com>
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -121,6 +123,13 @@ QBBWindow::QBBWindow(QWidget *window, screen_context_t context, QBBScreen *scree
 
     // Set the screen to the primary display (this is the default specified by screen).
     setScreen(screen);
+
+    // Qt somtimes doesn't call these setters after creating the window, so we need to do that
+    // ourselves here
+    if (window->parentWidget() && window->parentWidget()->platformWindow())
+        setParent(window->parentWidget()->platformWindow());
+    setGeometry(window->geometry());
+    setVisible(window->isVisible());
 }
 
 QBBWindow::~QBBWindow()
@@ -129,14 +138,12 @@ QBBWindow::~QBBWindow()
     qDebug() << "QBBWindow::~QBBWindow - w=" << widget();
 #endif
 
+    // Qt should have already deleted the children before deleting the parent.
+    Q_ASSERT(mChildren.size() == 0);
+
     // Remove from parent's Hierarchy.
     removeFromParent();
     mScreen->updateHierarchy();
-
-    // We shouldn't allow this case unless QT allows it. Does it? Or should we send the
-    // handleCloseEvent on all children when this window is deleted?
-    if (mChildren.size() > 0)
-        qFatal("QBBWindow: window destroyed before children!");
 
     // cleanup OpenGL/OpenVG context if it exists
     if (mPlatformGlContext != NULL) {
@@ -329,13 +336,42 @@ QBBBuffer &QBBWindow::renderBuffer()
     qDebug() << "QBBWindow::renderBuffer - w=" << widget();
 #endif
 
+    return buffer(BACK_BUFFER);
+}
+
+QBBBuffer &QBBWindow::frontBuffer()
+{
+#if defined(QBBWINDOW_DEBUG)
+    qDebug() << "QBBWindow::frontBuffer - w=" << widget();
+#endif
+
+    return buffer(FRONT_BUFFER);
+}
+
+QBBBuffer &QBBWindow::buffer(QBBWindow::Buffer bufferIndex)
+{
+#if defined(QBBWINDOW_DEBUG)
+    qDebug() << "QBBWindow::buffer - w=" << widget();
+#endif
+
     // check if render buffer is invalid
     if (mCurrentBufferIndex == -1) {
+        // check if there are any buffers available
+        int bufferCount = 0;
+        int result = screen_get_window_property_iv(mWindow, SCREEN_PROPERTY_RENDER_BUFFER_COUNT, &bufferCount);
+
+        if (result != 0) {
+            qFatal("QBBWindow: failed to query window buffer count, errno=%d", errno);
+        }
+
+        if (bufferCount != MAX_BUFFER_COUNT) {
+            qFatal("QBBWindow: invalid buffer count. Expected = %d, got = %d", MAX_BUFFER_COUNT, bufferCount);
+        }
 
         // get all buffers available for rendering
         errno = 0;
         screen_buffer_t buffers[MAX_BUFFER_COUNT];
-        int result = screen_get_window_property_pv(mWindow, SCREEN_PROPERTY_RENDER_BUFFERS, (void **)buffers);
+        result = screen_get_window_property_pv(mWindow, SCREEN_PROPERTY_RENDER_BUFFERS, (void **)buffers);
         if (result != 0) {
             qFatal("QBBWindow: failed to query window buffers, errno=%d", errno);
         }
@@ -350,6 +386,20 @@ QBBBuffer &QBBWindow::renderBuffer()
         mPreviousBufferIndex = -1;
     }
 
+    if (bufferIndex == BACK_BUFFER) {
+        return mBuffers[mCurrentBufferIndex];
+    } else if (bufferIndex == FRONT_BUFFER) {
+        int buf = mCurrentBufferIndex - 1;
+
+        if (buf < 0)
+            buf = MAX_BUFFER_COUNT - 1;
+
+        return mBuffers[buf];
+    }
+
+    qFatal("QBBWindow::buffer() - invalid buffer index. Aborting");
+
+    // never happens
     return mBuffers[mCurrentBufferIndex];
 }
 
@@ -511,10 +561,9 @@ void QBBWindow::raise()
     qDebug() << "QBBWindow::raise - w=" << widget();
 #endif
 
-    QBBWindow* oldParent = mParent;
-    if (oldParent) {
-        removeFromParent();
-        oldParent->mChildren.push_back(this);
+    if (mParent) {
+        mParent->mChildren.removeAll(this);
+        mParent->mChildren.push_back(this);
     } else {
         mScreen->raiseWindow(this);
     }
@@ -528,10 +577,9 @@ void QBBWindow::lower()
     qDebug() << "QBBWindow::lower - w=" << widget();
 #endif
 
-    QBBWindow* oldParent = mParent;
-    if (oldParent) {
-        removeFromParent();
-        oldParent->mChildren.push_front(this);
+    if (mParent) {
+        mParent->mChildren.removeAll(this);
+        mParent->mChildren.push_front(this);
     } else {
         mScreen->lowerWindow(this);
     }

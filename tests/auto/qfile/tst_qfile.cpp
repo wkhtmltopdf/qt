@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -76,7 +76,10 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include "../network-settings.h"
+
+#ifndef NO_NETWORK_TEST
+#  include "../network-settings.h"
+#endif
 
 #if defined(Q_OS_SYMBIAN)
 # define SRCDIR ""
@@ -164,7 +167,7 @@ private slots:
     void writeTextFile_data();
     void writeTextFile();
     /* void largeFileSupport(); */
-#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE) && !defined(NO_NETWORK_TEST)
     void largeUncFileSupport();
 #endif
     void tailFile();
@@ -362,9 +365,34 @@ private:
     RFs rfs_;
     RFile rfile_;
 #endif
+
+    const QString m_srcDir;
+    const QString m_stdinProcess;
 };
 
+static inline QString findStdinProcess()
+{
+    QString result = QCoreApplication::applicationDirPath();
+#ifdef Q_OS_WIN
+    // cd up from debug/release paths
+    if (result.endsWith(QLatin1String("debug"), Qt::CaseInsensitive)
+        || result.endsWith(QLatin1String("release"), Qt::CaseInsensitive)) {
+        result.truncate(result.lastIndexOf(QLatin1Char('/')));
+    }
+#endif
+    result += QLatin1String("/stdinprocess/stdinprocess");
+#ifdef Q_OS_WIN
+    result += QLatin1String(".exe");
+#endif
+    const QFileInfo fi(result);
+    if (fi.exists() && fi.isExecutable())
+        return fi.absoluteFilePath();
+    return QString();
+}
+
 tst_QFile::tst_QFile()
+    : m_srcDir(QLatin1String(SRCDIR))
+    , m_stdinProcess(findStdinProcess())
 {
 }
 
@@ -416,6 +444,12 @@ void tst_QFile::cleanup()
 
 void tst_QFile::initTestCase()
 {
+    QDir srcDir(m_srcDir);
+    QVERIFY2(srcDir.exists(), qPrintable(m_srcDir + QLatin1String(" does not exist.")));
+    QDir::setCurrent(srcDir.absolutePath());
+    QVERIFY2(!m_stdinProcess.isEmpty(),
+             qPrintable("Cannot locate stdinprocess from " + QCoreApplication::applicationDirPath()));
+
     QFile::remove("noreadfile");
 
     // create a file and make it read-only
@@ -493,7 +527,7 @@ void tst_QFile::exists()
     file.remove();
     QVERIFY(!file.exists());
 
-#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE) && !defined(NO_NETWORK_TEST)
     QFile unc("//" + QtNetworkSettings::winServerName() + "/testshare/readme.txt");
     QVERIFY(unc.exists());
 #endif
@@ -546,10 +580,19 @@ void tst_QFile::open_data()
     QTest::newRow("noreadfile") << QString("noreadfile") << int(QIODevice::ReadOnly)
                                 << (bool)FALSE << QFile::OpenError;
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
-    QTest::newRow("//./PhysicalDrive0") << QString("//./PhysicalDrive0") << int(QIODevice::ReadOnly)
-                                        << (bool)TRUE << QFile::NoError;
+    const QString drive0 = QLatin1String("//./PhysicalDrive0");
+    const QFileInfo drive0Fi(drive0);
+    if (drive0Fi.exists() && drive0Fi.isReadable()) {
+        QTest::newRow(qPrintable(drive0))
+            << drive0 << int(QIODevice::ReadOnly)
+            << (bool)TRUE << QFile::NoError;
+    } else {
+        qWarning("Skipping '%s' (requires administrative permissions)", qPrintable(drive0));
+    }
+#  ifndef NO_NETWORK_TEST
     QTest::newRow("uncFile") << "//" + QtNetworkSettings::winServerName() + "/testshare/test.pri" << int(QIODevice::ReadOnly)
                              << true << QFile::NoError;
+#  endif
 #endif
 }
 
@@ -577,7 +620,13 @@ void tst_QFile::open()
     if (filename.isEmpty())
         QTest::ignoreMessage(QtWarningMsg, "QFSFileEngine::open: No file name specified");
 
-    QCOMPARE(f.open( QIODevice::OpenMode(mode) ), ok);
+    if (ok) {
+        QVERIFY2(f.open(QIODevice::OpenMode(mode)),
+                 qPrintable(QString::fromLatin1("Cannot open %1 in mode %2: %3")
+                            .arg(filename).arg(mode).arg(f.errorString())));
+    } else {
+        QVERIFY(!f.open(QIODevice::OpenMode(mode)));
+    }
 
     QTEST( f.error(), "status" );
 }
@@ -618,7 +667,7 @@ void tst_QFile::size_data()
     QTest::addColumn<qint64>("size");
 
     QTest::newRow( "exist01" ) << QString(SRCDIR "testfile.txt") << (qint64)245;
-#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE) && !defined(NO_NETWORK_TEST)
     // Only test UNC on Windows./
     QTest::newRow("unc") << "//" + QString(QtNetworkSettings::winServerName() + "/testshare/test.pri") << (qint64)34;
 #endif
@@ -760,7 +809,7 @@ void tst_QFile::setSizeSeek()
 
 void tst_QFile::seekToSamePosition()
 {
-    QFile in("testfile.txt");
+    QFile in(SRCDIR "testfile.txt");
     QFile out("seekToSamePosition.txt");
     QVERIFY(in.open(QFile::ReadOnly));
     QVERIFY(out.open(QFile::WriteOnly));
@@ -959,7 +1008,7 @@ void tst_QFile::readAllStdin()
     QByteArray lotsOfData(1024, '@'); // 10 megs
 
     QProcess process;
-    process.start("stdinprocess/stdinprocess all");
+    process.start(m_stdinProcess + QLatin1String(" all"));
     QVERIFY( process.waitForStarted() );
     for (int i = 0; i < 5; ++i) {
         QTest::qWait(1000);
@@ -994,7 +1043,7 @@ void tst_QFile::readLineStdin()
 
     for (int i = 0; i < 2; ++i) {
         QProcess process;
-        process.start(QString("stdinprocess/stdinprocess line %1").arg(i), QIODevice::Text | QIODevice::ReadWrite);
+        process.start(m_stdinProcess + QString::fromLatin1(" line %1").arg(i), QIODevice::Text | QIODevice::ReadWrite);
         for (int i = 0; i < 5; ++i) {
             QTest::qWait(1000);
             process.write(lotsOfData);
@@ -1028,7 +1077,7 @@ void tst_QFile::readLineStdin_lineByLine()
 #else
     for (int i = 0; i < 2; ++i) {
         QProcess process;
-        process.start(QString("stdinprocess/stdinprocess line %1").arg(i), QIODevice::Text | QIODevice::ReadWrite);
+        process.start(m_stdinProcess + QString::fromLatin1(" line %1").arg(i), QIODevice::Text | QIODevice::ReadWrite);
         QVERIFY(process.waitForStarted());
 
         for (int j = 0; j < 3; ++j) {
@@ -1591,7 +1640,7 @@ void tst_QFile::writeTextFile()
     QCOMPARE(file.readAll(), out);
 }
 
-#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE) && !defined(NO_NETWORK_TEST)
 void tst_QFile::largeUncFileSupport()
 {
     qint64 size = Q_INT64_C(8589934592);
@@ -2325,7 +2374,7 @@ void tst_QFile::writeLargeDataBlock_data()
     QTest::newRow("localfile-RFile")  << "./largeblockfile.txt" << (int)OpenRFile;
 #endif
 
-#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE) && !defined(NO_NETWORK_TEST)
     // Some semi-randomness to avoid collisions.
     QTest::newRow("unc file")
         << QString("//" + QtNetworkSettings::winServerName() + "/TESTSHAREWRITABLE/largefile-%1-%2.txt")
@@ -2365,7 +2414,17 @@ void tst_QFile::writeLargeDataBlock()
 
         QVERIFY2( openFile(file, QIODevice::WriteOnly, (FileType)type),
             qPrintable(QString("Couldn't open file for writing: [%1]").arg(fileName)) );
-        QCOMPARE( file.write(originalData), (qint64)originalData.size() );
+        qint64 fileWriteOriginalData = file.write(originalData);
+        qint64 originalDataSize      = (qint64)originalData.size();
+#if defined(Q_OS_WIN)
+        if (fileWriteOriginalData == -1) {
+            qWarning() << qPrintable(QString("Error writing a large data block to [%1]: %2")
+                .arg(fileName)
+                .arg(file.errorString()));
+            QEXPECT_FAIL("unc file", "QTBUG-26906", Abort);
+        }
+#endif
+        QCOMPARE( fileWriteOriginalData, originalDataSize );
         QVERIFY( file.flush() );
 
         closeFile(file);
@@ -2647,7 +2706,7 @@ void tst_QFile::appendAndRead()
 
 void tst_QFile::miscWithUncPathAsCurrentDir()
 {
-#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINCE) && !defined(NO_NETWORK_TEST)
     QString current = QDir::currentPath();
     QVERIFY(QDir::setCurrent("//" + QtNetworkSettings::winServerName() + "/testshare"));
     QFile file("test.pri");
@@ -3137,6 +3196,30 @@ void tst_QFile::openDirectory()
     f1.close();
 }
 
+static qint64 streamExpectedSize(int fd)
+{
+    QT_STATBUF sb;
+    if (QT_FSTAT(fd, &sb) != -1)
+        return sb.st_size;
+    return 0;
+}
+
+static qint64 streamCurrentPosition(int fd)
+{
+    QT_OFF_T pos = QT_LSEEK(fd, 0, SEEK_CUR);
+    if (pos != -1)
+        return pos;
+    return 0;
+}
+
+static qint64 streamCurrentPosition(FILE *f)
+{
+    QT_OFF_T pos = QT_FTELL(f);
+    if (pos != -1)
+        return pos;
+    return 0;
+}
+
 void tst_QFile::openStandardStreamsFileDescriptors()
 {
 #ifdef Q_WS_WINCE
@@ -3145,60 +3228,57 @@ void tst_QFile::openStandardStreamsFileDescriptors()
     //it does not have functions to simply open them like below .
     QSKIP("Opening standard streams on Windows CE via descriptor not implemented", SkipAll);
 #endif
-    // Using file descriptors
+
     {
         QFile in;
         in.open(STDIN_FILENO, QIODevice::ReadOnly);
-        QCOMPARE( in.pos(), (qint64)0 );
-        QCOMPARE( in.size(), (qint64)0 );
-        QVERIFY( in.isSequential() );
+        QCOMPARE( in.pos(), streamCurrentPosition(STDIN_FILENO) );
+        QCOMPARE( in.size(), streamExpectedSize(STDIN_FILENO) );
     }
 
     {
         QFile out;
-        out.open(STDOUT_FILENO, QIODevice::WriteOnly);
-        QCOMPARE( out.pos(), (qint64)0 );
-        QCOMPARE( out.size(), (qint64)0 );
-        QVERIFY( out.isSequential() );
+        QVERIFY(out.open(STDOUT_FILENO, QIODevice::WriteOnly));
+        QCOMPARE( out.pos(), streamCurrentPosition(STDOUT_FILENO) );
+        QCOMPARE( out.size(), streamExpectedSize(STDOUT_FILENO) );
     }
 
     {
         QFile err;
         err.open(STDERR_FILENO, QIODevice::WriteOnly);
-        QCOMPARE( err.pos(), (qint64)0 );
-        QCOMPARE( err.size(), (qint64)0 );
-        QVERIFY( err.isSequential() );
+        QCOMPARE( err.pos(), streamCurrentPosition(STDERR_FILENO) );
+        QCOMPARE( err.size(), streamExpectedSize(STDERR_FILENO) );
     }
 }
 
 void tst_QFile::openStandardStreamsBufferedStreams()
 {
-#if defined (Q_OS_WIN) || defined(Q_OS_SYMBIAN)
-    QSKIP("Unix only test.", SkipAll);
+#if defined (Q_OS_WINCE) || defined(Q_OS_SYMBIAN)
+    QSKIP("Not tested on Windows CE or Symbian.");
 #endif
     // Using streams
     {
+        /* in/out/err.isSequential() are only true when run in a console (CI);
+        * it is false when they are redirected from/to files.
+        * Prevent failures in case someone runs tests with stdout/stderr redirected. */
         QFile in;
         in.open(stdin, QIODevice::ReadOnly);
-        QCOMPARE( in.pos(), (qint64)0 );
-        QCOMPARE( in.size(), (qint64)0 );
-        QVERIFY( in.isSequential() );
+        QCOMPARE( in.pos(), streamCurrentPosition(stdin) );
+        QCOMPARE( in.size(), streamExpectedSize(QT_FILENO(stdin)) );
     }
 
     {
         QFile out;
         out.open(stdout, QIODevice::WriteOnly);
-        QCOMPARE( out.pos(), (qint64)0 );
-        QCOMPARE( out.size(), (qint64)0 );
-        QVERIFY( out.isSequential() );
+        QCOMPARE( out.pos(), streamCurrentPosition(stdout) );
+        QCOMPARE( out.size(), streamExpectedSize(QT_FILENO(stdout)) );
     }
 
     {
         QFile err;
         err.open(stderr, QIODevice::WriteOnly);
-        QCOMPARE( err.pos(), (qint64)0 );
-        QCOMPARE( err.size(), (qint64)0 );
-        QVERIFY( err.isSequential() );
+        QCOMPARE( err.pos(), streamCurrentPosition(stderr) );
+        QCOMPARE( err.size(), streamExpectedSize(QT_FILENO(stderr)) );
     }
 }
 

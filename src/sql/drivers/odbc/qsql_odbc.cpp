@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtSql module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -54,6 +54,7 @@
 #include <qstringlist.h>
 #include <qvarlengtharray.h>
 #include <qvector.h>
+#include <qmath.h>
 #include <QDebug>
 #include <QSqlQuery>
 
@@ -115,7 +116,7 @@ class QODBCDriverPrivate
 public:
     enum DefaultCase{Lower, Mixed, Upper, Sensitive};
     QODBCDriverPrivate()
-    : hEnv(0), hDbc(0), unicode(false), useSchema(false), disconnectCount(0), isMySqlServer(false),
+    : hEnv(0), hDbc(0), unicode(false), useSchema(false), disconnectCount(0), datetime_precision(19), isMySqlServer(false),
            isMSSqlServer(false), isFreeTDSDriver(false), hasSQLFetchScroll(true),
            hasMultiResultSets(false), isQuoteInitialized(false), quote(QLatin1Char('"'))
     {
@@ -127,6 +128,7 @@ public:
     bool unicode;
     bool useSchema;
     int disconnectCount;
+    int datetime_precision;
     bool isMySqlServer;
     bool isMSSqlServer;
     bool isFreeTDSDriver;
@@ -139,6 +141,7 @@ public:
     void checkHasSQLFetchScroll();
     void checkHasMultiResults();
     void checkSchemaUsage();
+    void checkDateTimePrecision();
     bool setConnectionOptions(const QString& connOpts);
     void splitTableQualifier(const QString &qualifier, QString &catalog,
                              QString &schema, QString &table);
@@ -968,7 +971,8 @@ bool QODBCResult::reset (const QString& query)
         return true;
     }
 
-    SQLINTEGER isScrollable, bufferLength;
+    SQLULEN isScrollable = 0;
+    SQLINTEGER bufferLength;
     r = SQLGetStmtAttr(d->hStmt, SQL_ATTR_CURSOR_SCROLLABLE, &isScrollable, SQL_IS_INTEGER, &bufferLength);
     if(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)
         QSqlResult::setForwardOnly(isScrollable==SQL_NONSCROLLABLE);
@@ -1400,14 +1404,25 @@ bool QODBCResult::exec()
                 dt->hour = qdt.time().hour();
                 dt->minute = qdt.time().minute();
                 dt->second = qdt.time().second();
-                dt->fraction = qdt.time().msec() * 1000000;
+
+                int precision = d->driverPrivate->datetime_precision - 20; // (20 includes a separating period)
+                if (precision <= 0) {
+                    dt->fraction = 0;
+                } else {
+                    dt->fraction = qdt.time().msec() * 1000000;
+
+                    // (How many leading digits do we want to keep?  With SQL Server 2005, this should be 3: 123000000)
+                    int keep = (int)qPow(10.0, 9 - qMin(9, precision));
+                    dt->fraction /= keep * keep;
+                }
+
                 r = SQLBindParameter(d->hStmt,
                                       i + 1,
                                       qParamType[(QFlag)(bindValueType(i)) & QSql::InOut],
                                       SQL_C_TIMESTAMP,
                                       SQL_TIMESTAMP,
-                                      19,
-                                      0,
+                                      d->driverPrivate->datetime_precision,
+                                      precision,
                                       (void *) dt,
                                       0,
                                       *ind == SQL_NULL_DATA ? ind : NULL);
@@ -1894,6 +1909,7 @@ bool QODBCDriver::open(const QString & db,
     d->checkSqlServer();
     d->checkHasSQLFetchScroll();
     d->checkHasMultiResults();
+    d->checkDateTimePrecision();
     setOpen(true);
     setOpenError(false);
     if(d->isMSSqlServer) {
@@ -2127,6 +2143,29 @@ void QODBCDriverPrivate::checkHasMultiResults()
 #else
         hasMultiResultSets = QString::fromUtf8((const char *)driverResponse.constData(), length).startsWith(QLatin1Char('Y'));
 #endif
+}
+
+void QODBCDriverPrivate::checkDateTimePrecision()
+{
+    SQLINTEGER columnSize;
+    SQLHANDLE hStmt;
+
+    SQLRETURN r = SQLAllocHandle(SQL_HANDLE_STMT, hDbc, &hStmt);
+    if (r != SQL_SUCCESS) {
+        return;
+    }
+
+    r = SQLGetTypeInfo(hStmt, SQL_TIMESTAMP);
+    if (r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO) {
+        r = SQLFetch(hStmt);
+        if ( r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO )
+        {
+            if (SQLGetData(hStmt, 3, SQL_INTEGER, &columnSize, sizeof(columnSize), 0) == SQL_SUCCESS) {
+                datetime_precision = (int)columnSize;
+            }
+        }
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
 }
 
 QSqlResult *QODBCDriver::createResult() const

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -49,6 +49,7 @@ class tst_Selftests: public QObject
 {
     Q_OBJECT
 private slots:
+    void initTestCase();
     void runSubTest_data();
     void runSubTest();
     void cleanupTestCase();
@@ -179,6 +180,19 @@ static QList<Logger> allLoggers()
         << Logger("xunitxml",   "xunitxml", QStringList() << "-xunitxml")
         << Logger("lightxml",   "lightxml", QStringList() << "-lightxml")
     ;
+}
+
+void tst_Selftests::initTestCase()
+{
+#ifdef Q_OS_WIN
+    // cd up to be able to locate the binaries of the sub-processes.
+    QDir workingDirectory = QDir::current();
+    if (workingDirectory.absolutePath().endsWith(QLatin1String("/debug"), Qt::CaseInsensitive)
+            || workingDirectory.absolutePath().endsWith(QLatin1String("/release"), Qt::CaseInsensitive)) {
+        QVERIFY(workingDirectory.cdUp());
+        QVERIFY(QDir::setCurrent(workingDirectory.absolutePath()));
+    }
+#endif
 }
 
 void tst_Selftests::runSubTest_data()
@@ -323,6 +337,14 @@ void tst_Selftests::runSubTest_data()
     }
 }
 
+static inline QByteArray msgCannotStartProcess(const QString &binary, const QString &why)
+{
+    return QString::fromLatin1("Cannot start '%1' from '%2': %3")
+                               .arg(QDir::toNativeSeparators(binary),
+                                    QDir::toNativeSeparators(QDir::currentPath()),
+                                    why).toLocal8Bit();
+}
+
 void tst_Selftests::doRunSubTest(QString const& subdir, QString const& logger, QStringList const& arguments )
 {
     // For the plain text logger, we'll read straight from standard output.
@@ -338,7 +360,9 @@ void tst_Selftests::doRunSubTest(QString const& subdir, QString const& logger, Q
 
     QProcess proc;
     proc.setEnvironment(QStringList(""));
-    proc.start(subdir + "/" + subdir, QStringList() << arguments << extraArguments);
+    const QString binary = subdir + QLatin1Char('/') + subdir;
+    proc.start(binary, QStringList() << arguments << extraArguments);
+    QVERIFY2(proc.waitForStarted(), msgCannotStartProcess(binary, proc.errorString()));
     QVERIFY2(proc.waitForFinished(), qPrintable(proc.errorString()));
 
     QByteArray out;
