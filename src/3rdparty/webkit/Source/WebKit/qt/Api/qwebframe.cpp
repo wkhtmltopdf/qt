@@ -229,7 +229,7 @@ QWebPrinterPrivate::QWebPrinterPrivate(const QWebFrame *f, QPaintDevice *printer
                      int(printer->width() / zoomFactorX),
                      int(printer->height() / zoomFactorY));
     
-    printContext.begin(pageRect.width());
+    printContext.begin(pageRect.width(), pageRect.height());
     float pageHeight = 0;
     printContext.computePageRects(pageRect, /* headerHeight */ 0, /* footerHeight */ 0, /* userScaleFactor */ 1.0, pageHeight);
     
