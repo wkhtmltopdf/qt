@@ -343,7 +343,9 @@ void RenderTable::layout()
             if (m_firstBody) {
                 // FIXME: Calculate maximum required height across all cells in first body row
                 RenderTableCell* firstCell = m_firstBody->primaryCellAt(0, 0);
-                requiredHeight += firstCell->contentLogicalHeight() + firstCell->paddingTop(false) + firstCell->paddingBottom(false) + vBorderSpacing();
+                if (firstCell) {
+                    requiredHeight += firstCell->contentLogicalHeight() + firstCell->paddingTop(false) + firstCell->paddingBottom(false) + vBorderSpacing();
+                }
             }
             if (requiredHeight > remainingLogicalHeight) {
                 setPaginationStrut(remainingLogicalHeight);
