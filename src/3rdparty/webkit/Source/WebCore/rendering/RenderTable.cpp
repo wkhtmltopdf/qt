@@ -342,9 +342,11 @@ void RenderTable::layout()
             }
             if (m_firstBody) {
                 // FIXME: Calculate maximum required height across all cells in first body row
-                RenderTableCell* firstCell = m_firstBody->primaryCellAt(0, 0);
-                if (firstCell) {
-                    requiredHeight += firstCell->contentLogicalHeight() + firstCell->paddingTop(false) + firstCell->paddingBottom(false) + vBorderSpacing();
+                if (m_firstBody->numRows() > 0 && m_firstBody->numColumns() > 0) {
+                    RenderTableCell* firstCell = m_firstBody->primaryCellAt(0, 0);
+                    if (firstCell) {
+                        requiredHeight += firstCell->contentLogicalHeight() + firstCell->paddingTop(false) + firstCell->paddingBottom(false) + vBorderSpacing();
+                    }
                 }
             }
             if (requiredHeight > remainingLogicalHeight) {
