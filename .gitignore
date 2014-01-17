@@ -138,6 +138,7 @@ tst_*~
 *.ib_pdb_index
 *.idb
 *.ilk
+*.pch
 *.pdb
 *.sln
 *.suo
@@ -153,6 +154,7 @@ tst_*~
 *.Release
 
 # WebKit temp files
+mkspecs/modules/qt_webkit_version.pri
 src/3rdparty/webkit/WebCore/mocinclude.tmp
 src/3rdparty/webkit/includes.txt
 src/3rdparty/webkit/includes2.txt
