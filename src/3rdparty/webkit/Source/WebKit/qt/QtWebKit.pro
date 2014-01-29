@@ -40,6 +40,12 @@ for(item, HEADERS):WEB_CORE_HEADERS += ../../WebCore/$$item
 SOURCES = $$JAVASCRIPT_CORE_SOURCES $$WEB_CORE_SOURCES
 HEADERS = $$WEB_CORE_HEADERS
 
+mac {
+  for(item, OBJECTIVE_SOURCES):WEB_CORE_OBJECTIVE_SOURCES += ../../WebCore/$$item
+  OBJECTIVE_SOURCES = $$WEB_CORE_OBJECTIVE_SOURCES
+  INCLUDEPATH += ../../WebCore/platform/mac
+}
+
 include($$PWD/Api/headers.pri)
 
 webkit2 {
