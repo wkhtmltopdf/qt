@@ -36,9 +36,11 @@ for(item, SOURCES): {
     }
 }
 for(item, HEADERS):WEB_CORE_HEADERS += ../../WebCore/$$item
+for(item, ASM_SOURCES):WEB_CORE_ASM_SOURCES += ../../WebCore/$$item
 
 SOURCES = $$JAVASCRIPT_CORE_SOURCES $$WEB_CORE_SOURCES
 HEADERS = $$WEB_CORE_HEADERS
+ASM_SOURCES = $$WEB_CORE_ASM_SOURCES
 
 include($$PWD/Api/headers.pri)
 
