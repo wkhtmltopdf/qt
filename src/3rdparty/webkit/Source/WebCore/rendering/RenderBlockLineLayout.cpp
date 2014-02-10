@@ -1031,7 +1031,7 @@ void RenderBlock::layoutRunsAndFloats(bool fullLayout, bool hasInlineChild, Vect
         }
 
         // If there were no breaks in the block, we didn't create any widows.
-        if (!lineBox->isFirstAfterPageBreak() || lineBox == firstLineInBlock)
+        if (!lineBox || !lineBox->isFirstAfterPageBreak() || lineBox == firstLineInBlock)
             return;
 
         if (numLinesHanging < style()->widows()) {
