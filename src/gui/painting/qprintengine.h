@@ -90,7 +90,7 @@ public:
         PPK_SupportsMultipleCopies,
         PPK_PaperSize = PPK_PageSize,
 
-        PKK_UseCompression = 0xfe10,
+        PPK_UseCompression = 0xfe10,
         PPK_ImageQuality,
         PPK_ImageDPI,
 
