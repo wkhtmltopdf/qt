@@ -793,33 +793,34 @@ public:
       unsigned char marker = next();
       if (marker != 0xD8) throw jpeg_exception();
       while (true) {
-	marker = next();
-	while (marker != 0xFF) marker=next();
-	while (marker == 0xFF) marker=next();
-	switch(marker) {
-	case 0xC0:
-	case 0xC1:
-	case 0xC2:
-	case 0xC3:
-	case 0xC5:
-	case 0xC6:
-	case 0xC7:
-	case 0xC9:
-	case 0xCA:
-	case 0xCB:
-	case 0xCD:
-	case 0xCE:
-	case 0xCF:
-	  read_header();
-	  return true;
-	case 0xDA:
-	case 0xD9:
-	  return false;
-	default:
-	  skip();
-	  break;
-	}
-      }
+        marker = next();
+        while (marker != 0xFF) marker=next();
+        while (marker == 0xFF) marker=next();
+        switch(marker) {
+          case 0xC0:   // SOF0 Start Of Frame N - BaseLine
+          case 0xC1:   // SOF1 N indicates which compression process - Extended Sequential
+          case 0xC2:   // SOF2 Only SOF0-SOF2 are now in common use - Progressive
+          case 0xC3:   // SOF3 Lossless
+          case 0xC5:   // SOF5 Differential sequential
+          case 0xC6:   // SOF6 Differential progressive
+          case 0xC7:   // SOF7 Differential lossless
+          case 0xC9:   // SOF9 Extended sequential, arithmetic coding
+          case 0xCA:   // SOF10 Progressive, arithmetic coding
+          case 0xCB:   // SOF11 Lossless, arithmetic coding
+          case 0xCD:   // SOF13 Differential sequential, arithmetic coding
+          case 0xCE:   // SOF14 Differential progressive, arithmetic coding
+          case 0xCF:   // SOF15 Differential lossless, arithmetic coding
+          case 0xE1:   // EXIF/XMP Exif marker.  Also used for XMP data!
+            read_header();
+            return true;
+          case 0xDA:    // SOS Start Of Scan (begins compressed data)
+          case 0xD9:    // EOI End Of Image (end of datastream)
+            return false;
+          default:
+            skip();
+            break;
+          }
+        }
     } catch(jpeg_exception) {
       return false;
     }
