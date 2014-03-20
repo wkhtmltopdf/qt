@@ -86,6 +86,7 @@ neon:if(*-g++*|*-qcc*) {
 win32:!contains(QT_CONFIG, directwrite) {
     DEFINES += QT_NO_DIRECTWRITE
 }
+win32-g++*: INCLUDEPATH += $$PWD
 
 mac:contains(QMAKE_MAC_XARCH, no) {
     DEFINES += QT_NO_MAC_XARCH
