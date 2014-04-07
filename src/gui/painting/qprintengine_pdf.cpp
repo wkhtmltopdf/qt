@@ -1251,6 +1251,9 @@ void QPdfEnginePrivate::writeHeader()
 
     xprintf("%%PDF-1.4\n");
 
+    // four binary characters (PDF spec, 7.5.2)
+    xprintf("%%\xe2\xe3\xcf\xd3\n");
+
     writeInfo();
 
     pageRoot = requestObject();
@@ -1421,7 +1424,7 @@ void QPdfEnginePrivate::embedFont(QFontSubset *font)
         xprintf("<< /Length %d >>\n"
                 "stream\n", touc.length());
         write(touc);
-        write("endstream\n"
+        write("\nendstream\n"
               "endobj\n");
     }
     {
