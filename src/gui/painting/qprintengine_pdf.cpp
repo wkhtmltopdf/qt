@@ -1424,7 +1424,7 @@ void QPdfEnginePrivate::embedFont(QFontSubset *font)
         xprintf("<< /Length %d >>\n"
                 "stream\n", touc.length());
         write(touc);
-        write("endstream\n"
+        write("\nendstream\n"
               "endobj\n");
     }
     {
