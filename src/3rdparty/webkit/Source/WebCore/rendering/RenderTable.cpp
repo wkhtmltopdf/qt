@@ -349,7 +349,7 @@ void RenderTable::layout()
                     }
                 }
             }
-            if (requiredHeight > remainingLogicalHeight) {
+            if (requiredHeight > remainingLogicalHeight && requiredHeight < pageLogicalHeight) {
                 setPaginationStrut(remainingLogicalHeight);
             }
         }
