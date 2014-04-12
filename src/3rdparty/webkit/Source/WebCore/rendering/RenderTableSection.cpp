@@ -523,7 +523,7 @@ int RenderTableSection::layoutRows(int toAdd, int headHeight, int footHeight)
 
                 int cellRequiredHeight = cell->contentLogicalHeight() + cell->paddingTop(false) + cell->paddingBottom(false);
                 int requiredHeight = max(logicalRowHeights[r], cellRequiredHeight);
-                if (requiredHeight >= availableHeight) {
+                if (requiredHeight >= availableHeight && requiredHeight < pageLogicalHeight) {
                     pageOffset += remainingLogicalHeight + headHeight;
                     if (requiredHeight > availableHeight) {
                         m_rowPos[r] += remainingLogicalHeight + headHeight;
