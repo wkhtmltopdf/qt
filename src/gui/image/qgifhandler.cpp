@@ -366,6 +366,13 @@ int QGIFFormat::decode(QImage *image, const uchar *buffer, int length,
                     return -1;
                 }
 
+                // Check if the previous attempt to create the image failed. If it
+                // did then the image is broken and we should give up.
+                if (image->isNull()) {
+                    state = Error;
+                    return -1;
+                }
+
                 disposePrevious(image);
                 disposed = false;
 
