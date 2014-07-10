@@ -190,9 +190,25 @@ static OUTLINETEXTMETRIC *getOutlineTextMetric(HDC hdc)
     return otm;
 }
 
+bool QFontEngineWin::hasCFFTable() const
+{
+    HDC hdc = shared_dc();
+    SelectObject(hdc, hfont);
+    return GetFontData(hdc, MAKE_TAG('C', 'F', 'F', ' '), 0, 0, 0) != GDI_ERROR;
+}
+
+bool QFontEngineWin::hasCMapTable() const
+{
+    HDC hdc = shared_dc();
+    SelectObject(hdc, hfont);
+    return GetFontData(hdc, MAKE_TAG('c', 'm', 'a', 'p'), 0, 0, 0) != GDI_ERROR;
+}
+
 void QFontEngineWin::getCMap()
 {
-    ttf = (bool)(tm.tmPitchAndFamily & TMPF_TRUETYPE);
+    ttf = (bool)(tm.tmPitchAndFamily & TMPF_TRUETYPE) || hasCMapTable();
+    cffTable = hasCFFTable();
+
     HDC hdc = shared_dc();
     SelectObject(hdc, hfont);
     bool symb = false;
@@ -373,6 +389,7 @@ HGDIOBJ QFontEngineWin::selectDesignFont() const
 {
     LOGFONT f = logfont;
     f.lfHeight = unitsPerEm;
+    f.lfWidth  = 0;
     HFONT designFont = CreateFontIndirect(&f);
     return SelectObject(shared_dc(), designFont);
 }
@@ -1072,7 +1089,7 @@ void QFontEngineWin::getUnscaledGlyph(glyph_t glyph, QPainterPath *path, glyph_m
 
 bool QFontEngineWin::getSfntTableData(uint tag, uchar *buffer, uint *length) const
 {
-    if (!ttf)
+    if (!ttf && !cffTable)
         return false;
     HDC hdc = shared_dc();
     SelectObject(hdc, hfont);
