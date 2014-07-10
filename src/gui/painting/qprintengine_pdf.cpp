@@ -315,6 +315,37 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     d->formFields.push_back(obj);
 }
 
+void QPdfEngine::addComboBox(const QRectF &r, const QString &name,const QString &option_list,const QString &default_value, bool readOnly) {
+    Q_D(QPdfEngine);
+    uint obj = d->addXrefEntry(-1);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    //<</P 6 0 R/FT/Ch/Ff 131072/DV(VIC)/F 4/V(VIC)/T(ComboBox1)/Subtype/Widget/TI 1/Opt[[(NSW)(New South Wales)][(VIC)(Victoria)]]/Type/Annot/Rect[165.29 712.17 345.16 756.19]>>
+    //Note that the pdf spec sayes that we should add some sort of default appearence atleast for yes, which we dont ghost script provides one, however acroread does not
+    if (d->formFieldList == -1) d->formFieldList = d->requestObject();
+    d->xprintf("<</P %d 0 R", d->pages.back());
+    d->xprintf("/FT/Ch/Ff 131072/DV ");
+    d->printString(default_value);
+    d->xprintf("/F 4/V");
+    d->printString(default_value);
+    if (!name.isEmpty()) {
+        d->xprintf("/T");
+        d->printString(name);
+    }
+    d->xprintf("/Subtype/Widget/TI 1/Opt %s", option_list.toUtf8().constData());
+    d->xprintf("/Type/Annot");
+
+    d->xprintf("/Rect[", d->formFieldList);
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]>>\n");
+
+    d->currentPage->annotations.push_back(obj);
+    d->formFields.push_back(obj);
+}
+
 void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, const QRectF &sr, const QByteArray * data)
 {
     if (sr.isEmpty() || rectangle.isEmpty() || pixmap.isNull())

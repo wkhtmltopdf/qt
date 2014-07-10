@@ -7448,6 +7448,15 @@ void QPainter::addRadioButton(const QRectF &r, const QString & group, bool check
     d->engine->addRadioButton(worldTransform().mapRect(r), group, checked, name, readOnly);
 }
 
+void QPainter::addComboBox(const QRectF &r, const QString &name, const QString &option_list, const QString &default_value, bool readOnly) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addComboBox: Painter not active");
+        return;
+    }
+    d->engine->addComboBox(worldTransform().mapRect(r), name, option_list, default_value, readOnly);
+}
+
 /*!
     Sets the given render \a hint on the painter if \a on is true;
     otherwise clears the render hint.
