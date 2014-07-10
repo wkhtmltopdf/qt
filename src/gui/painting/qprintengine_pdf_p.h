@@ -118,6 +118,7 @@ public:
     virtual void addLink(const QRectF &r, const QString &anchor);
     virtual void addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength);
     virtual void addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly);
+    virtual void addComboBox(const QRectF &r, const QString &name, const QString &option_list, const QString &default_value, bool readOnly);
 
     // ### unused, should have something for this in QPrintEngine
     void setAuthor(const QString &author);
