@@ -454,7 +454,8 @@ public:
     inline void addLink(int x, int y, int w, int h, const QString &anchor);
     inline void addLink(const QRect &r, const QString &anchor);
     void addLink(const QRectF &r, const QString &anchor);
-    
+
+    void addHiddenField(const QRectF &r, const QString &value="", const QString &name="");
     void addTextField(const QRectF &r, const QString &text="", const QString &name="", bool multiLine=false, bool password=false, bool readOnly=false, int maxLength=-1);
     void addCheckBox(const QRectF &r, bool checked=false, const QString &name="", bool readOnly=false);
     void addRadioButton(const QRectF &r, const QString & group="",  bool checked=false, const QString &name="", bool readOnly=false);

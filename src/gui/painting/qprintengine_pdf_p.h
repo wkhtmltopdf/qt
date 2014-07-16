@@ -116,6 +116,7 @@ public:
     virtual void addHyperlink(const QRectF &r, const QUrl &url);
     virtual void addAnchor(const QRectF &r, const QString &name);
     virtual void addLink(const QRectF &r, const QString &anchor);
+    virtual void addHiddenField(const QRectF &r, const QString &value, const QString &name);
     virtual void addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength);
     virtual void addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly);
     virtual void addComboBox(const QRectF &r, const QString &name, const QString &option_list, const QString &default_value, bool readOnly);

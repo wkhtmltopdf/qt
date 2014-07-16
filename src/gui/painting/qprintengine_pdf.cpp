@@ -271,6 +271,45 @@ void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name,
     d->formFields.push_back(obj);
 }
 
+void QPdfEngine::addHiddenField(const QRectF &r, const QString &value, const QString &name)
+{
+    Q_D(QPdfEngine);
+    uint obj = d->addXrefEntry(-1);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    if (d->formFieldList == -1) d->formFieldList = d->requestObject();
+    d->xprintf("<<\n"
+               "/Type /Annot\n"
+               "/Parent %d 0 R\n"
+               "/Rect[", d->formFieldList);
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]\n"
+               "/BS<</S/I>>\n"
+               "/FT/Tx\n"
+               "/F 6"
+               "/Subtype/Widget\n"
+               "/P %d 0 R\n", d->pages.back());
+    if (!value.isEmpty()) {
+        d->xprintf("/V");
+        d->printString(value);
+        d->xprintf("\n");
+    }
+    if (!name.isEmpty()) {
+        d->xprintf("/T");
+        d->printString(name);
+        d->xprintf("\n");
+    }
+    d->xprintf("/DA(/Helv 12 Tf 0 g)\n"
+               "/Ff 0\n"
+               ">>\n"
+               "endobj\n");
+    d->currentPage->annotations.push_back(obj);
+    d->formFields.push_back(obj);
+}
+
 void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength)
 {
     Q_D(QPdfEngine);
