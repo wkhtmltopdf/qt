@@ -326,7 +326,7 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
     d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
     d->xprintf("]\n"
-               "/BS<</S/I>>\n"
+               "/BS<</W 1/S/S>>\n"
                "/FT/Tx\n"
                "/Subtype/Widget\n"
                "/P %d 0 R\n", d->pages.back());
@@ -342,8 +342,7 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     }
     if (maxLength >= 0)
         d->xprintf("/MaxLen %d\n",maxLength);
-    d->xprintf("/DA(/Helv 12 Tf 0 g)\n"
-               "/Ff %d\n"
+    d->xprintf("/Ff %d\n"
                ">>\n"
                "endobj\n",
                (readOnly?1:0)<<0 | (password?1:0)<<13 | (multiLine?1:0)<<12
