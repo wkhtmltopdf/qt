@@ -196,6 +196,23 @@ bool QPdfEngine::end()
                    d->outlineRoot->firstChild->obj, d->outlineRoot->lastChild->obj);
     }
 
+
+    QMapIterator<QString, QFormFieldParent* > i(d->formFieldParents);
+    while (i.hasNext()) {
+        i.next();
+        QFormFieldParent* formFieldParent = i.value();
+        d->addXrefEntry(formFieldParent->ref);
+        d->xprintf("<</Kids[");
+        foreach(const uint & i, formFieldParent->children)
+            d->xprintf("%d 0 R ",i);
+        d->xprintf("]\n"
+                   "/Parent %d 0 R\n", d->formFieldList);
+        d->xprintf("/FT/%s\n",formFieldParent->type.toUtf8().constData());
+        d->xprintf("/T");
+        d->printString(formFieldParent->name);
+        d->xprintf(">>endobj\n");
+    }
+
     if (d->formFields.size()) {
         uint font = d->addXrefEntry(-1);
         d->xprintf("<</Type/Font/Name/Helv/BaseFont/Helvetica/Subtype/Type1>>\n"
@@ -318,11 +335,21 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     char buf[256];
     QRectF rr = d->pageMatrix().mapRect(r);
     if (d->formFieldList == -1) d->formFieldList = d->requestObject();
+
+    if (!d->formFieldParents.contains(name)) {
+        QFormFieldParent* form = new QFormFieldParent();
+        form->ref = d->requestObject();
+        form->type = "Tx";
+        form->name = name;
+        d->formFields.push_back(form->ref);
+        d->formFieldParents[name] = form;
+    }
+
     d->xprintf("<<\n"
                "/Type /Annot\n"
                "/Parent %d 0 R\n"
                "/F 4\n"
-               "/Rect[", d->formFieldList);
+               "/Rect[", d->formFieldParents[name]->ref);
     d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
@@ -337,11 +364,6 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
         d->printString(text);
         d->xprintf("\n");
     }
-    if (!name.isEmpty()) {
-        d->xprintf("/T");
-        d->printString(name);
-        d->xprintf("\n");
-    }
     if (maxLength >= 0)
         d->xprintf("/MaxLen %d\n",maxLength);
     d->xprintf("/Ff %d\n"
@@ -350,7 +372,8 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
                (readOnly?1:0)<<0 | (password?1:0)<<13 | (multiLine?1:0)<<12
         );
     d->currentPage->annotations.push_back(obj);
-    d->formFields.push_back(obj);
+
+    d->formFieldParents[name]->children.push_back(obj);
 }
 
 void QPdfEngine::addComboBox(const QRectF &r, const QString &name,const QString &option_list,const QString &default_value, bool readOnly) {

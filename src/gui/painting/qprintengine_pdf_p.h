@@ -137,7 +137,14 @@ private:
 
     QPrinter::PrinterState state;
 };
-
+class QFormFieldParent
+{
+    public:
+        QVector<uint> children;
+        QString type;
+        QString name;
+        int ref;
+};
 class QPdfEnginePrivate : public QPdfBaseEnginePrivate
 {
     Q_DECLARE_PUBLIC(QPdfEngine)
@@ -211,6 +218,7 @@ private:
     void embedFont(QFontSubset *font);
 
     int formFieldList;
+    QMap<QString, QFormFieldParent*> formFieldParents;
     QVector<uint> formFields;
     QVector<int> xrefPositions;
     QDataStream* stream;
