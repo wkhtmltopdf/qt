@@ -116,10 +116,11 @@ public:
     virtual void addHyperlink(const QRectF &r, const QUrl &url);
     virtual void addAnchor(const QRectF &r, const QString &name);
     virtual void addLink(const QRectF &r, const QString &anchor);
-    virtual void addHiddenField(const QRectF &r, const QString &value, const QString &name);
-    virtual void addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength);
-    virtual void addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly);
-    virtual void addComboBox(const QRectF &r, const QString &name, const QString &option_list, const QString &default_value, bool readOnly);
+    virtual uint addJavaScript(const QString &script);
+    virtual void addHiddenField(const QRectF &, const QMap<QString, QString> &data, const QString &value, const QString &name);
+    virtual void addTextField(const QRectF &r, const QMap<QString, QString> &data, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength);
+    virtual void addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly);
+    virtual void addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name, const QString &option_list, const QString &default_value, bool readOnly);
 
     // ### unused, should have something for this in QPrintEngine
     void setAuthor(const QString &author);
@@ -143,6 +144,10 @@ class QFormFieldParent
         QVector<uint> children;
         QString type;
         QString name;
+        QString option_list;
+        QString value;
+        int JSonBlur_ref;
+        int JSvalidation_ref;
         int ref;
 };
 class QPdfEnginePrivate : public QPdfBaseEnginePrivate
