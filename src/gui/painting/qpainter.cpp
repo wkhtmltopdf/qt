@@ -7438,6 +7438,15 @@ void QPainter::addTextField(const QRectF &r, const QMap<QString, QString> &data,
     d->engine->addTextField(worldTransform().mapRect(r), data, text, name, multiLine, password, readOnly, maxLength);
 }
 
+void QPainter::addPageJavaScript(const QMap<QString, QString> &data, const QString &script) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addPageJavascript: Painter not active");
+        return;
+    }
+    d->engine->addPageJavaScript(data, script);
+}
+
 void QPainter::addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
     Q_D(QPainter);
     if (!d->engine) {
