@@ -456,6 +456,7 @@ public:
     void addLink(const QRectF &r, const QString &anchor);
 
     void addHiddenField(const QRectF &r, const QMap<QString, QString> &data, const QString &value="", const QString &name="");
+    void addPageJavaScript(const QMap<QString, QString> &data, const QString &script);
     void addTextField(const QRectF &r, const QMap<QString, QString> &data, const QString &text="", const QString &name="", bool multiLine=false, bool password=false, bool readOnly=false, int maxLength=-1);
     void addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked=false, const QString &name="", bool readOnly=false);
     void addRadioButton(const QRectF &r, const QMap<QString, QString> &data, const QString & group="",  bool checked=false, const QString &name="", bool readOnly=false);

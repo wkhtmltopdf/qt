@@ -246,6 +246,22 @@ bool QPdfEngine::end()
                    "endobj\n", font);
     }
 
+    int named_javascript_ref = -1;
+    if (d->pageJavaScripts.size()) {
+        int jsNamesRef = d->addXrefEntry(-1);
+        d->xprintf("<</Names[");
+        QMapIterator<QString, uint > i(d->pageJavaScripts);
+        while (i.hasNext()) {
+            i.next();
+            d->xprintf("(%s)", i.key().toUtf8().constData());
+            d->xprintf("%d 0 R", i.value());
+        }
+        d->xprintf("]>>\nendobj\n");
+
+        named_javascript_ref = d->addXrefEntry(-1);
+        d->xprintf("<</JavaScript %d 0 R>>\nendobj\n", jsNamesRef);
+    }
+
     d->catalog = d->addXrefEntry(-1);
     d->xprintf("<<\n"
                "/Type /Catalog\n"
@@ -260,6 +276,8 @@ bool QPdfEngine::end()
     if (d->anchors.size())
         d->xprintf("/Dests %d 0 R\n", dests);
 
+    if (named_javascript_ref > 0)
+        d->xprintf("/Names %d 0 R\n", named_javascript_ref);
     d->xprintf(">>\n"
                "endobj\n");
 
@@ -277,6 +295,17 @@ uint QPdfEngine::addJavaScript(const QString &script) {
     uint ref = d->addXrefEntry(-1);
     d->xprintf("<</JS(%s)/S/JavaScript>>\nendobj\n",script.toUtf8().constData());
     return ref;
+}
+
+void QPdfEngine::addPageJavaScript(const QMap<QString, QString> &data, const QString &script) {
+    Q_D(QPdfEngine);
+    QString script_name;
+    if (data.contains("acroform-script-name")) {
+        script_name = data["acroform-script-name"];
+    } else {
+        script_name = QString("UntitledScript%1").arg(d->pageJavaScripts.count());
+    }
+    d->pageJavaScripts[script_name] = this->addJavaScript(script);
 }
 
 void QPdfEngine::addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
@@ -396,7 +425,7 @@ void QPdfEngine::addTextField(const QRectF &r, const QMap<QString, QString> &dat
                "/Subtype/Widget\n"
                "/P %d 0 R\n", d->pages.back());
     // writing javascript actions
-    if (onBlurRef != -1) {
+    if (onBlurRef > 0) {
         d->xprintf("/AA<</Bl %d 0 R>>", onBlurRef);
     }
     // alignment
@@ -455,9 +484,9 @@ void QPdfEngine::addComboBox(const QRectF &r, const QMap<QString, QString> &data
         d->formFieldParents[name] = form;
     }
     int onBlurRef = -1;
-    // writing javascript actions
-    if (onBlurRef != -1) {
-        d->xprintf("/AA<</Bl %d 0 R>>", onBlurRef);
+    //handling javascript
+    if (data.contains("acroform-on-blur")) {
+        onBlurRef = this->addJavaScript(data["acroform-on-blur"]);
     }
 
     uint obj = d->addXrefEntry(-1);
@@ -468,6 +497,22 @@ void QPdfEngine::addComboBox(const QRectF &r, const QMap<QString, QString> &data
     // writing javascript actions
     if (onBlurRef != -1) {
         d->xprintf("/AA<</Bl %d 0 R>>", onBlurRef);
+    }
+    // alignment
+    if (data.contains("acroform-align")) {
+        uint align = -1;
+        if (data["acroform-align"].compare("left", Qt::CaseInsensitive) == 0) {
+            align = 0;
+        }
+        else if (data["acroform-align"].compare("center", Qt::CaseInsensitive) == 0){
+            align = 1;
+        }
+        else if (data["acroform-align"].compare("right", Qt::CaseInsensitive) == 0){
+            align = 2;
+        }
+        if (align != -1) {
+            d->xprintf("/Q %d\n",align);
+        }
     }
     d->xprintf("/F 4");
     d->xprintf("/Subtype/Widget/TI 1/Type/Annot");
