@@ -956,7 +956,7 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
         bool hasAlpha = false;
         bool hasMask = false;
 
-        if (format != QImage::Format_RGB32) {
+        if ((!uns && format == QImage::Format_ARGB32) || (uns && noneScaled->format() == QImage::Format_ARGB32)) {
             softMaskData.resize(w * h);
             uchar *sdata = (uchar *)softMaskData.data();
             for (int y = 0; y < h; ++y) {
