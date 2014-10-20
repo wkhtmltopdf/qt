@@ -156,6 +156,8 @@ static void init(QTextBoundaryFinder::BoundaryType type, const QChar *chars, int
   \value NotAtBoundary  The boundary finder is not at a boundary position.
   \value StartWord  The boundary finder is at the start of a word.
   \value EndWord  The boundary finder is at the end of a word.
+  \value SoftHyphen The boundary finder is at the soft hyphen
+                    (can occur for a Line boundary type only).
 */
 
 /*!
@@ -369,7 +371,7 @@ int QTextBoundaryFinder::toNextBoundary()
         break;
     case Line:
         Q_ASSERT(pos);
-        while (pos < length && d->attributes[pos-1].lineBreakType < HB_Break)
+        while (pos < length && d->attributes[pos-1].lineBreakType == HB_NoBreak)
             ++pos;
         break;
     }
@@ -411,7 +413,7 @@ int QTextBoundaryFinder::toPreviousBoundary()
             --pos;
         break;
     case Line:
-        while (pos > 0 && d->attributes[pos-1].lineBreakType < HB_Break)
+        while (pos > 0 && d->attributes[pos-1].lineBreakType == HB_NoBreak)
             --pos;
         break;
     }
@@ -436,7 +438,7 @@ bool QTextBoundaryFinder::isAtBoundary() const
     case Word:
         return d->attributes[pos].wordBoundary;
     case Line:
-        return (pos > 0) ? d->attributes[pos-1].lineBreakType >= HB_Break : true;
+        return (pos > 0) ? d->attributes[pos-1].lineBreakType != HB_NoBreak : true;
     case Sentence:
         return d->attributes[pos].sentenceBoundary;
     }
@@ -452,6 +454,8 @@ QTextBoundaryFinder::BoundaryReasons QTextBoundaryFinder::boundaryReasons() cons
         return NotAtBoundary;
     if (! isAtBoundary())
         return NotAtBoundary;
+    if (t == Line && pos < length && d->attributes[pos-1].lineBreakType == HB_SoftHyphen)
+        return SoftHyphen;
     if (pos == 0) {
         if (d->attributes[pos].whiteSpace)
             return NotAtBoundary;
