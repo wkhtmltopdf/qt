@@ -71,8 +71,8 @@ public:
     enum BoundaryReason {
         NotAtBoundary = 0,
         StartWord = 1,
-        EndWord = 2
-        //Hyphen
+        EndWord = 2,
+        SoftHyphen = 4
     };
     Q_DECLARE_FLAGS( BoundaryReasons, BoundaryReason )
 
@@ -105,6 +105,8 @@ private:
     uint unused : 31;
     QTextBoundaryFinderPrivate *d;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(QTextBoundaryFinder::BoundaryReasons)
 
 QT_END_NAMESPACE
 
