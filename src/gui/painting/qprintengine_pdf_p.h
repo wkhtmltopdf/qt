@@ -165,6 +165,8 @@ public:
         }
     };
     
+    bool forceJpeg;
+
     OutlineItem *outlineRoot;
     OutlineItem *outlineCurrent;
     void writeOutlineChildren(OutlineItem *node);
@@ -188,7 +190,7 @@ public:
 
     void convertImage(const QImage & image, QByteArray & imageData);
 
-    int addImage(const QImage &image, bool *bitmap, qint64 serial_no, const QImage * noneScaled=0, const QByteArray * data=0, bool * useScaled=0);
+    int addImage(const QImage &image, bool *bitmap, qint64 serial_no, const QImage * noneScaled=0, const QByteArray * orgData=0, bool * useScaled=0);
     int addConstantAlphaObject(int brushAlpha, int penAlpha = 255);
     int addBrushPattern(const QTransform &matrix, bool *specifyColor, int *gStateObject);
 
@@ -219,7 +221,8 @@ private:
     int imageQuality;
 
     int writeImage(const QByteArray &data, int width, int height, int depth,
-                   int maskObject, int softMaskObject, bool dct = false);
+                   int maskObject, int softMaskObject, bool dct = false,
+                   bool isDeflated = false, bool isPredicted = false);
     void writePage();
 
     int addXrefEntry(int object, bool printostr = true);

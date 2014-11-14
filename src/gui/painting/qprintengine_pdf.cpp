@@ -112,6 +112,8 @@ void QPdfEngine::setProperty(PrintEnginePropertyKey key, const QVariant &value) 
         d->imageQuality = value.toInt();
     else if (key==PPK_ImageDPI)
         d->imageDPI = value.toInt();
+    else if (key==PPK_ForceJPEG)
+        d->forceJpeg = value.toBool();
     else
         QPdfBaseEngine::setProperty(key, value);
 }
@@ -328,10 +330,12 @@ void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, con
 
     QRectF a = d->stroker.matrix.mapRect(rectangle);
     QRectF c = d->paperRect();
-    int maxWidth = int(a.width() / c.width() * d->width() / 72.0 * d->imageDPI);
-    int maxHeight = int(a.height() / c.height() * d->height() / 72.0 * d->imageDPI);
-    if (image.width() > maxWidth || image.height() > maxHeight)
-        image = unscaled.scaled( image.size().boundedTo( QSize(maxWidth, maxHeight) ), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    if (d->imageDPI > 0) {
+      int maxWidth = int(a.width() / c.width() * d->width() / 72.0 * d->imageDPI);
+      int maxHeight = int(a.height() / c.height() * d->height() / 72.0 * d->imageDPI);
+      if (image.width() > maxWidth || image.height() > maxHeight)
+          image = unscaled.scaled( image.size().boundedTo( QSize(maxWidth, maxHeight) ), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    }
 
     bool useScaled=true;
     bool bitmap = true;
@@ -470,6 +474,7 @@ QPdfEnginePrivate::QPdfEnginePrivate(QPrinter::PrinterMode m)
     outlineRoot = NULL;
     outlineCurrent = NULL;
     fullPage = false;
+    forceJpeg = false;
 }
 
 QPdfEnginePrivate::~QPdfEnginePrivate()
@@ -836,7 +841,7 @@ public:
 /*!
  * Adds an image to the pdf and return the pdf-object id. Returns -1 if adding the image failed.
  */
-int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_no, const QImage * noneScaled, const QByteArray * data, bool * useScaled)
+int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_no, const QImage * noneScaled, const QByteArray * orgData, bool * useScaled)
 {
     if (img.isNull())
         return -1;
@@ -878,97 +883,100 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
         object = writeImage(data, w, h, d, 0, 0);
     } else {
         QByteArray imageData;
-        uLongf target=1024*1024*1024;
-        bool uns=false;
-        bool dct = false;
 
         d = (colorMode == QPrinter::GrayScale) ? 8 : 32;
 
-        if (QImageWriter::supportedImageFormats().contains("jpeg") && colorMode != QPrinter::GrayScale) {
-            QByteArray imageData2;
+        bool mustScaleImage = noneScaled && noneScaled->rect() != image.rect();
 
-            QBuffer buffer(&imageData2);
-            QImageWriter writer(&buffer, "jpeg");
-            writer.setQuality(imageQuality);
-            writer.write(image);
+        bool orgDct = false;
+        int orgDctDepth;
+        bool dct = false;
+        bool useNonScaled = false;
 
-            if ((uLongf)imageData2.size() < target) {
-                imageData=imageData2;
-                target = imageData2.size();
-                dct = true;
-                uns=false;
-            }
-        }
-
-        if (noneScaled && noneScaled->rect() != image.rect()) {
-            QByteArray imageData2;
-            if (noneScaled->format() != QImage::Format_RGB32 && noneScaled->format() != QImage::Format_ARGB32)
-                convertImage(noneScaled->convertToFormat(QImage::Format_ARGB32), imageData2);
-            else
-                convertImage(*noneScaled, imageData2);
-            uLongf len = imageData2.size();
-            uLongf destLen = len + len/100 + 13; // zlib requirement
-            Bytef* dest = new Bytef[destLen];
-            if (Z_OK == ::compress(dest, &destLen, (const Bytef*) imageData2.data(), (uLongf)len) &&
-                (uLongf)destLen < target) {
-                imageData=imageData2;
-                target=destLen;
-                dct=false;
-                uns=true;
-            }
-            delete[] dest;
-        }
-
+        if (orgData != 0) 
         {
-            QByteArray imageData2;
-            convertImage(image, imageData2);
-            uLongf len = imageData2.size();
-            uLongf destLen = len + len/100 + 13; // zlib requirement
-            Bytef* dest = new Bytef[destLen];
-            if (Z_OK == ::compress(dest, &destLen, (const Bytef*) imageData2.data(), (uLongf)len) &&
-                (uLongf)destLen < target) {
-                imageData=imageData2;
-                target=destLen;
-                dct=false;
-                uns=false;
-            }
-            delete[] dest;
-        }
-
-
-        if (colorMode != QPrinter::GrayScale && noneScaled != 0 && data != 0) {
           jpg_header_reader header;
-          if (header.read(data)) {
-            d = header.components == 3?32:8;
-            imageData = *data;
-            target=data->size();
-            dct=true;
-            uns=true;
+          if (header.read(orgData)) {
+            orgDct = true;
+            orgDctDepth = header.components == 3 ? 32 : 8;
           }
         }
+        if (orgDct && colorMode != QPrinter::GrayScale && noneScaled != 0 && !mustScaleImage) {
+          jpg_header_reader header;
+          d = orgDctDepth;
+          imageData = *orgData;
+          dct = true;
+          useNonScaled = true;
+        }
+        else {
+          QByteArray convertedImageData;
+          convertImage(image, convertedImageData);
+          if (doCompress) {
+            uLongf len = convertedImageData.size();
+            uLongf compressedLen = len + len/100 + 13; // zlib requirement
+            QByteArray compressedImageData;
+            compressedImageData.reserve(compressedLen);
+            if (Z_OK != ::compress((Bytef*)compressedImageData.data(), &compressedLen, (const Bytef*) convertedImageData.data(), (uLongf)len))
+              return -1;
+            compressedImageData.resize(compressedLen);
 
-        if (uns) {
+            imageData = compressedImageData;
+
+            if ((orgDct || this->forceJpeg) &&
+              QImageWriter::supportedImageFormats().contains("jpeg") && 
+              colorMode != QPrinter::GrayScale)
+            {
+              QByteArray imageData2;
+
+              QBuffer buffer(&imageData2);
+              QImageWriter writer(&buffer, "jpeg");
+              writer.setQuality(imageQuality);
+              writer.write(image);
+
+              if ((uLongf)imageData2.size() < compressedLen) {
+                  imageData=imageData2;
+                  dct = true;
+                  useNonScaled = false;
+              }
+            }
+          } else {
+            imageData = convertedImageData;
+          } 
+        }
+
+        if (useNonScaled) {
             w = noneScaled->width();
             h = noneScaled->height();
         }
-        if (useScaled) *useScaled = (uns?false:true);
+        if (useScaled)
+          *useScaled = !useNonScaled;
+
         QByteArray softMaskData;
         bool hasAlpha = false;
         bool hasMask = false;
 
-        if ((!uns && format == QImage::Format_ARGB32) || (uns && noneScaled->format() == QImage::Format_ARGB32)) {
-            softMaskData.resize(w * h);
-            uchar *sdata = (uchar *)softMaskData.data();
-            for (int y = 0; y < h; ++y) {
-                const QRgb *rgb = (const QRgb *)(uns?noneScaled->scanLine(y):image.scanLine(y));
-                for (int x = 0; x < w; ++x) {
-                    uchar alpha = qAlpha(*rgb);
-                    *sdata++ = alpha;
-                    hasMask |= (alpha < 255);
-                    hasAlpha |= (alpha != 0 && alpha != 255);
-                    ++rgb;
-                }
+        if ((!useNonScaled && format == QImage::Format_ARGB32) || (useNonScaled && noneScaled->hasAlphaChannel())) {
+          softMaskData.resize(w * h);
+          uchar *sdata = (uchar *)softMaskData.data();
+          const QImage* imgPtr;
+          QImage argb32NoneScaled;
+          if (useNonScaled && noneScaled->format() != QImage::Format_ARGB32) {
+            argb32NoneScaled = noneScaled->convertToFormat(QImage::Format_ARGB32);
+            imgPtr = &argb32NoneScaled;
+          } else {
+            imgPtr = useNonScaled ? noneScaled : &image;
+          }
+
+          for (int y = 0; y < h; ++y) {
+            const QRgb *rgb = (const QRgb *)(imgPtr->scanLine(y));
+            for (int x = 0; x < w; ++x) {
+              uchar alpha = qAlpha(*rgb);
+              *sdata++ = alpha;
+              hasMask |= (alpha < 255);
+              hasAlpha |= (alpha != 0 && alpha != 255);
+              ++rgb;
             }
+          }
         }
 
         int maskObject = 0;
@@ -993,7 +1001,7 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
             maskObject = writeImage(mask, w, h, 1, 0, 0);
         }
         object = writeImage(imageData, w, h, d,
-                            maskObject, softMaskObject, dct);
+                            maskObject, softMaskObject, dct, doCompress && !dct);
     }
     imageCache.insert(serial_no, object);
     return object;
@@ -1201,7 +1209,8 @@ int QPdfEnginePrivate::writeCompressed(const char *src, int len)
 }
 
 int QPdfEnginePrivate::writeImage(const QByteArray &data, int width, int height, int depth,
-                                  int maskObject, int softMaskObject, bool dct)
+                                  int maskObject, int softMaskObject, bool dct,
+                                  bool isDeflated, bool isPredicted)
 {
     int image = addXrefEntry(-1);
     xprintf("<<\n"
@@ -1232,12 +1241,22 @@ int QPdfEnginePrivate::writeImage(const QByteArray &data, int width, int height,
         xprintf("/Filter /DCTDecode\n>>\nstream\n");
         write(data);
         len = data.length();
-    } else {
-        if (doCompress)
-            xprintf("/Filter /FlateDecode\n>>\nstream\n");
-        else
-            xprintf(">>\nstream\n");
+    }
+    else {
+      if (doCompress || isDeflated)
+        xprintf("/Filter /FlateDecode\n");
+      if (isPredicted) {
+        xprintf("/DecodeParms << /Predictor 15\n /Colors %d\n"
+          " /BitsPerComponent %d\n /Columns %d >>",
+          depth == 32 ? 3 : 1, 8, width);
+      }
+      xprintf(">>\nstream\n");
+      if (isDeflated) {
+        stream->writeRawData(data.constData(), data.length());
+        len = data.length();
+      } else {
         len = writeCompressed(data);
+      }
     }
     xprintf("\nendstream\n"
             "endobj\n");
