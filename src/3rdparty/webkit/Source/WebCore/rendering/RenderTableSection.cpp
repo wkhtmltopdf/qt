@@ -513,12 +513,13 @@ int RenderTableSection::layoutRows(int toAdd, int headHeight, int footHeight)
             m_rowPos[r] += pageOffset;
             int remainingLogicalHeight = pageLogicalHeight - layoutState->pageLogicalOffset(m_rowPos[r]) % pageLogicalHeight;
             int availableHeight = remainingLogicalHeight - footHeight - vspacing;
+            RenderTableRow* rowRenderer = m_grid[r].rowRenderer;
 
             for (int c = 0; c < nEffCols; c++) {
                 CellStruct& cs = cellAt(r, c);
                 RenderTableCell* cell = cs.primaryCell();
 
-                if (!cell || cs.inColSpan || cell->row() != r)
+                if (!cell || cs.inColSpan || cell->row() != r || !rowRenderer || rowRenderer->style()->pageBreakInside() != PBAVOID)
                     continue;
 
                 int cellRequiredHeight = cell->contentLogicalHeight() + cell->paddingTop(false) + cell->paddingBottom(false);
