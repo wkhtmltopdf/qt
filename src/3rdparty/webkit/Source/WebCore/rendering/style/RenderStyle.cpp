@@ -391,7 +391,6 @@ StyleDifference RenderStyle::diff(const RenderStyle* other, unsigned& changedCon
         if (rareInheritedData->highlight != other->rareInheritedData->highlight
             || rareInheritedData->indent != other->rareInheritedData->indent
             || rareInheritedData->m_effectiveZoom != other->rareInheritedData->m_effectiveZoom
-            || rareInheritedData->textSizeAdjust != other->rareInheritedData->textSizeAdjust
             || rareInheritedData->wordBreak != other->rareInheritedData->wordBreak
             || rareInheritedData->wordWrap != other->rareInheritedData->wordWrap
             || rareInheritedData->nbspMode != other->rareInheritedData->nbspMode

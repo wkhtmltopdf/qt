@@ -42,7 +42,6 @@ body {
     font-family: Lucida Grande, sans-serif;
     font-size: 10px;
     margin: 0;
-    -webkit-text-size-adjust: none;
     -webkit-user-select: none;
 }
 
@@ -668,7 +667,6 @@ body.platform-linux .monospace, body.platform-linux .source-code {
     overflow-y: overlay;
     word-wrap: break-word;
     -webkit-user-select: text;
-    -webkit-text-size-adjust: auto;
 }
 
 #console-prompt {
@@ -2336,7 +2334,6 @@ body.inactive .data-grid th.sort-ascending, body.inactive .data-grid th.sort-des
     padding: 2px 0;
     overflow-y: overlay;
     overflow-x: hidden;
-    -webkit-text-size-adjust: auto;
 }
 
 .database-query-prompt {

@@ -1972,7 +1972,6 @@ void CSSStyleSelector::adjustRenderStyle(RenderStyle* style, RenderStyle* parent
 
 void CSSStyleSelector::updateFont()
 {
-    checkForTextSizeAdjust();
     checkForGenericFamilyChange(style(), m_parentStyle);
     checkForZoomChange(style(), m_parentStyle);
     m_style->font().update(m_fontSelector);
@@ -3365,7 +3364,7 @@ void CSSStyleSelector::applyDeclarations(bool isImportant, int startIndex, int e
 
                 if (applyFirst) {
                     COMPILE_ASSERT(firstCSSProperty == CSSPropertyColor, CSS_color_is_first_property);
-                    COMPILE_ASSERT(CSSPropertyZoom == CSSPropertyColor + 14, CSS_zoom_is_end_of_first_prop_range);
+                    COMPILE_ASSERT(CSSPropertyZoom == CSSPropertyColor + 13, CSS_zoom_is_end_of_first_prop_range);
                     COMPILE_ASSERT(CSSPropertyLineHeight == CSSPropertyZoom + 1, CSS_line_height_is_after_zoom);
 
                     // give special priority to font-xxx, color properties, etc
@@ -4164,10 +4163,6 @@ void CSSStyleSelector::applyProperty(int id, CSSValue *value)
             lineHeight = Length(-100.0, Percent);
         else if (CSSPrimitiveValue::isUnitTypeLength(type)) {
             double multiplier = zoomFactor;
-            if (m_style->textSizeAdjust()) {
-                if (Frame* frame = m_checker.m_document->frame())
-                    multiplier *= frame->textZoomFactor();
-            }
             lineHeight = Length(primitiveValue->computeLengthIntForLength(style(), m_rootElementStyle,  multiplier), Fixed);
         } else if (type == CSSPrimitiveValue::CSS_PERCENTAGE)
             lineHeight = Length((m_style->fontSize() * primitiveValue->getIntValue()) / 100, Fixed);
@@ -5305,13 +5300,6 @@ void CSSStyleSelector::applyProperty(int id, CSSValue *value)
             m_style->setBorderFit(BorderFitLines);
         return;
     }
-    case CSSPropertyWebkitTextSizeAdjust: {
-        HANDLE_INHERIT_AND_INITIAL(textSizeAdjust, TextSizeAdjust)
-        if (!primitiveValue || !primitiveValue->getIdent()) return;
-        m_style->setTextSizeAdjust(primitiveValue->getIdent() == CSSValueAuto);
-        m_fontDirty = true;
-        return;
-    }
     case CSSPropertyWebkitTextSecurity:
         HANDLE_INHERIT_AND_INITIAL_AND_PRIMITIVE(textSecurity, TextSecurity)
         return;
@@ -6420,16 +6408,6 @@ void CSSStyleSelector::mapNinePieceImage(CSSPropertyID property, CSSValue* value
             break;
     }
     image.setVerticalRule(verticalRule);
-}
-
-void CSSStyleSelector::checkForTextSizeAdjust()
-{
-    if (m_style->textSizeAdjust())
-        return;
- 
-    FontDescription newFontDescription(m_style->fontDescription());
-    newFontDescription.setComputedSize(newFontDescription.specifiedSize());
-    m_style->setFontDescription(newFontDescription);
 }
 
 void CSSStyleSelector::checkForZoomChange(RenderStyle* style, RenderStyle* parentStyle)

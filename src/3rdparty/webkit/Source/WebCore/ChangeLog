@@ -1,3 +1,52 @@
+2014-11-26  Kasper F. Brandt <poizan@poizan.dk>
+        Backport of changeset 145168 - original changelog entry:
+
+---- 2013-03-07  Andreas Kling  <akling@apple.com>
+
+        Remove desktop version of -webkit-text-size-adjust property.
+        <http://webkit.org/b/56543>
+        <rdar://problem/9150203>
+
+        Reviewed by Simon Fraser.
+
+        This property existed to support a number of Apple-internal clients of WebKit.
+        We no longer need this property, and since it's clashing with a mobile version of the
+        same property with different meaning, let's remove it altogether from the desktop build.
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::CSSComputedStyleDeclaration::getPropertyCSSValue):
+        * css/CSSParser.cpp:
+        (WebCore::isValidKeywordPropertyAndValue):
+        (WebCore::isKeywordPropertyID):
+        (WebCore::CSSParser::parseValue):
+        * css/CSSPrimitiveValue.cpp:
+        (WebCore::CSSPrimitiveValue::computeLengthDouble):
+        * css/CSSProperty.cpp:
+        (WebCore::CSSProperty::isInheritedProperty):
+        * css/CSSPropertyNames.in:
+        * css/StyleBuilder.cpp:
+        (WebCore::ApplyPropertyLineHeight::applyValue):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::updateFont):
+        (WebCore::StyleResolver::applyProperties):
+        (WebCore::StyleResolver::applyProperty):
+        * css/StyleResolver.h:
+        (StyleResolver):
+        * css/svg.css:
+        * editing/EditingStyle.cpp:
+        * inspector/front-end/inspector.css:
+        (#console-messages):
+        * inspector/front-end/resourcesPanel.css:
+        (.storage-view.query):
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::diff):
+        * rendering/style/RenderStyle.h:
+        * rendering/style/StyleRareInheritedData.cpp:
+        (WebCore::StyleRareInheritedData::StyleRareInheritedData):
+        (WebCore::StyleRareInheritedData::operator==):
+        * rendering/style/StyleRareInheritedData.h:
+        (StyleRareInheritedData):
+
 2012-11-28  Zeno Albisser  <zeno@webkit.org>
 
         [Qt][Win] Enable usage of QTWEBKIT_PLUGIN_PATH.
