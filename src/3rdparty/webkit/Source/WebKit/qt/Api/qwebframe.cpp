@@ -223,8 +223,8 @@ QWebPrinterPrivate::QWebPrinterPrivate(const QWebFrame *f, QPaintDevice *printer
     , frame(f)
     , graphicsContext(&p)
 {
-    const qreal zoomFactorX = (qreal)printer->logicalDpiX() / (qreal)qt_defaultDpi();
-    const qreal zoomFactorY = (qreal)printer->logicalDpiY() / (qreal)qt_defaultDpi();
+    const qreal zoomFactorX = (qreal)printer->logicalDpiX() / (qreal)96;
+    const qreal zoomFactorY = (qreal)printer->logicalDpiY() / (qreal)96;
     IntRect pageRect(0, 0,
                      int(printer->width() / zoomFactorX),
                      int(printer->height() / zoomFactorY));
