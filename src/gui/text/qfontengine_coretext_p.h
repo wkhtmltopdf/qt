@@ -102,6 +102,7 @@ public:
     virtual QFixed emSquareSize() const;
 
     virtual QFontEngine *cloneWithSize(qreal pixelSize) const;
+    virtual QFontEngine::Properties properties() const;
 
 private:
     friend class QRawFontPrivate;
