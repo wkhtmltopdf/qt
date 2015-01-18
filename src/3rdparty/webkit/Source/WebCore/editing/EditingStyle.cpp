@@ -71,7 +71,6 @@ static const int editingStyleProperties[] = {
     CSSPropertyWebkitBorderVerticalSpacing,
     CSSPropertyWebkitTextDecorationsInEffect,
     CSSPropertyWebkitTextFillColor,
-    CSSPropertyWebkitTextSizeAdjust,
     CSSPropertyWebkitTextStrokeColor,
     CSSPropertyWebkitTextStrokeWidth,
 };

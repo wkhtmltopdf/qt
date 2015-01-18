@@ -1341,10 +1341,6 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(int proper
             return primitiveValueCache->createIdentifierValue(CSSValueClip);
         case CSSPropertyWebkitTextSecurity:
             return primitiveValueCache->createValue(style->textSecurity());
-        case CSSPropertyWebkitTextSizeAdjust:
-            if (style->textSizeAdjust())
-                return primitiveValueCache->createIdentifierValue(CSSValueAuto);
-            return primitiveValueCache->createIdentifierValue(CSSValueNone);
         case CSSPropertyWebkitTextStrokeColor:
             return currentColorOrValidColor(style.get(), style->textStrokeColor());
         case CSSPropertyWebkitTextStrokeWidth:

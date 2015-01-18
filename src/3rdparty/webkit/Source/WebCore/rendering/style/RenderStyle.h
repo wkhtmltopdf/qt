@@ -777,7 +777,6 @@ public:
 
     LineBoxContain lineBoxContain() const { return rareInheritedData->m_lineBoxContain; }
     const LineClampValue& lineClamp() const { return rareNonInheritedData->lineClamp; }
-    bool textSizeAdjust() const { return rareInheritedData->textSizeAdjust; }
     ETextSecurity textSecurity() const { return static_cast<ETextSecurity>(rareInheritedData->textSecurity); }
 
     WritingMode writingMode() const { return static_cast<WritingMode>(inherited_flags.m_writingMode); }
@@ -1126,7 +1125,6 @@ public:
 
     void setLineBoxContain(LineBoxContain c) { SET_VAR(rareInheritedData, m_lineBoxContain, c); }
     void setLineClamp(LineClampValue c) { SET_VAR(rareNonInheritedData, lineClamp, c); }
-    void setTextSizeAdjust(bool b) { SET_VAR(rareInheritedData, textSizeAdjust, b); }
     void setTextSecurity(ETextSecurity aTextSecurity) { SET_VAR(rareInheritedData, textSecurity, aTextSecurity); }
 
 #if ENABLE(SVG)
@@ -1320,7 +1318,6 @@ public:
 
     // Keep these at the end.
     static LineClampValue initialLineClamp() { return LineClampValue(); }
-    static bool initialTextSizeAdjust() { return true; }
     static ETextSecurity initialTextSecurity() { return TSNONE; }
 #if ENABLE(DASHBOARD_SUPPORT)
     static const Vector<StyleDashboardRegion>& initialDashboardRegions();

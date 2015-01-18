@@ -1730,10 +1730,6 @@ bool CSSParser::parseValue(int propId, bool important)
         // When specifying either type of unit, require non-negative integers
         validPrimitive = (!id && (value->unit == CSSPrimitiveValue::CSS_PERCENTAGE || value->fValue) && validUnit(value, FInteger | FPercent | FNonNeg, false));
         break;
-    case CSSPropertyWebkitTextSizeAdjust:
-        if (id == CSSValueAuto || id == CSSValueNone)
-            validPrimitive = true;
-        break;
     case CSSPropertyWebkitRtlOrdering:
         if (id == CSSValueLogical || id == CSSValueVisual)
             validPrimitive = true;
