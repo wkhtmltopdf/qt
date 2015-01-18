@@ -93,6 +93,7 @@ public:
         PPK_UseCompression = 0xfe10,
         PPK_ImageQuality,
         PPK_ImageDPI,
+        PPK_ForceJPEG,
 
         PPK_CustomBase = 0xff00
     };
