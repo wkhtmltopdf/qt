@@ -7420,32 +7420,59 @@ void QPainter::addHyperlink(const QRectF &r, const QUrl &url)
     d->engine->addHyperlink(worldTransform().mapRect(r), url);
 }
 
-void QPainter::addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength) {
+void QPainter::addHiddenField(const QRectF &r, const QMap<QString, QString> &data, const QString &value, const QString &name) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addHiddenField: Painter not active");
+        return;
+    }
+    d->engine->addHiddenField(worldTransform().mapRect(r), data, value, name);
+}
+
+void QPainter::addTextField(const QRectF &r, const QMap<QString, QString> &data, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength) {
     Q_D(QPainter);
     if (!d->engine) {
         qWarning("QPainter::addTextField: Painter not active");
         return;
     }
-    d->engine->addTextField(worldTransform().mapRect(r), text, name, multiLine, password, readOnly, maxLength);
+    d->engine->addTextField(worldTransform().mapRect(r), data, text, name, multiLine, password, readOnly, maxLength);
 }
 
-void QPainter::addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly) {
+void QPainter::addPageJavaScript(const QMap<QString, QString> &data, const QString &script) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addPageJavascript: Painter not active");
+        return;
+    }
+    d->engine->addPageJavaScript(data, script);
+}
+
+void QPainter::addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
     Q_D(QPainter);
     if (!d->engine) {
         qWarning("QPainter::addCheckBox: Painter not active");
         return;
     }
-    d->engine->addCheckBox(worldTransform().mapRect(r), checked, name, readOnly);
+    d->engine->addCheckBox(worldTransform().mapRect(r), data, checked, name, readOnly);
 }
 
 
-void QPainter::addRadioButton(const QRectF &r, const QString & group, bool checked, const QString &name, bool readOnly) {
+void QPainter::addRadioButton(const QRectF &r, const QMap<QString, QString> &data, const QString & group, bool checked, const QString &name, bool readOnly) {
     Q_D(QPainter);
     if (!d->engine) {
         qWarning("QPainter::addRadioButton: Painter not active");
         return;
     }
-    d->engine->addRadioButton(worldTransform().mapRect(r), group, checked, name, readOnly);
+    d->engine->addRadioButton(worldTransform().mapRect(r), data, group, checked, name, readOnly);
+}
+
+void QPainter::addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name, const QString &option_list, const QString &default_value, bool readOnly) {
+    Q_D(QPainter);
+    if (!d->engine) {
+        qWarning("QPainter::addComboBox: Painter not active");
+        return;
+    }
+    d->engine->addComboBox(worldTransform().mapRect(r), data, name, option_list, default_value, readOnly);
 }
 
 /*!

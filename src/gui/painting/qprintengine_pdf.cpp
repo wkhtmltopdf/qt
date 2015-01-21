@@ -196,6 +196,41 @@ bool QPdfEngine::end()
                    d->outlineRoot->firstChild->obj, d->outlineRoot->lastChild->obj);
     }
 
+
+    QMapIterator<QString, QFormFieldParent* > i(d->formFieldParents);
+    while (i.hasNext()) {
+        i.next();
+        QFormFieldParent* formFieldParent = i.value();
+        d->addXrefEntry(formFieldParent->ref);
+        d->xprintf("<<");
+        if (formFieldParent->JSvalidation_ref != -1) {
+            d->xprintf("/AA<</V %d 0 R>>",formFieldParent->JSvalidation_ref);
+        }
+        d->xprintf("/Kids[");
+        foreach(const uint & i, formFieldParent->children)
+            d->xprintf("%d 0 R ",i);
+        d->xprintf("]\n"
+                   "/Parent %d 0 R\n", d->formFieldList);
+        d->xprintf("/FT/%s\n",formFieldParent->type.toUtf8().constData());
+        if (!formFieldParent->name.isEmpty()) {
+            d->xprintf("/T");
+            d->printString(formFieldParent->name);
+        }
+        if (!formFieldParent->value.isEmpty()) {
+            d->xprintf("/V");
+            d->printString(formFieldParent->value);
+            d->xprintf("\n");
+            d->xprintf("/DV");
+            d->printString(formFieldParent->value);
+            d->xprintf("\n");
+        }
+        if (formFieldParent->type == "Ch") {
+            d->xprintf("/Opt %s\n", formFieldParent->option_list.toUtf8().constData());
+            d->xprintf("/Ff 131072\n");
+        }
+        d->xprintf(">>endobj\n");
+    }
+
     if (d->formFields.size()) {
         uint font = d->addXrefEntry(-1);
         d->xprintf("<</Type/Font/Name/Helv/BaseFont/Helvetica/Subtype/Type1>>\n"
@@ -209,6 +244,22 @@ bool QPdfEngine::end()
                    "/DA(/Helv 0 Tf 0 g)\n"
                    ">>\n"
                    "endobj\n", font);
+    }
+
+    int named_javascript_ref = -1;
+    if (d->pageJavaScripts.size()) {
+        int jsNamesRef = d->addXrefEntry(-1);
+        d->xprintf("<</Names[");
+        QMapIterator<QString, uint > i(d->pageJavaScripts);
+        while (i.hasNext()) {
+            i.next();
+            d->xprintf("(%s)", i.key().toUtf8().constData());
+            d->xprintf("%d 0 R", i.value());
+        }
+        d->xprintf("]>>\nendobj\n");
+
+        named_javascript_ref = d->addXrefEntry(-1);
+        d->xprintf("<</JavaScript %d 0 R>>\nendobj\n", jsNamesRef);
     }
 
     d->catalog = d->addXrefEntry(-1);
@@ -225,6 +276,8 @@ bool QPdfEngine::end()
     if (d->anchors.size())
         d->xprintf("/Dests %d 0 R\n", dests);
 
+    if (named_javascript_ref > 0)
+        d->xprintf("/Names %d 0 R\n", named_javascript_ref);
     d->xprintf(">>\n"
                "endobj\n");
 
@@ -237,7 +290,25 @@ bool QPdfEngine::end()
     return true;
 }
 
-void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly) {
+uint QPdfEngine::addJavaScript(const QString &script) {
+    Q_D(QPdfEngine);
+    uint ref = d->addXrefEntry(-1);
+    d->xprintf("<</JS(%s)/S/JavaScript>>\nendobj\n",script.toUtf8().constData());
+    return ref;
+}
+
+void QPdfEngine::addPageJavaScript(const QMap<QString, QString> &data, const QString &script) {
+    Q_D(QPdfEngine);
+    QString script_name;
+    if (data.contains("acroform-script-name")) {
+        script_name = data["acroform-script-name"];
+    } else {
+        script_name = QString("UntitledScript%1").arg(d->pageJavaScripts.count());
+    }
+    d->pageJavaScripts[script_name] = this->addJavaScript(script);
+}
+
+void QPdfEngine::addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
     Q_D(QPdfEngine);
     uint obj = d->addXrefEntry(-1);
     char buf[256];
@@ -246,7 +317,7 @@ void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name,
     if (d->formFieldList == -1) d->formFieldList = d->requestObject();
     d->xprintf("<<\n"
                "/Type /Annot\n"
-               "/Parrent %d 0 R\n"
+               "/Parent %d 0 R\n"
                "/Rect[", d->formFieldList);
     d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
@@ -271,7 +342,7 @@ void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name,
     d->formFields.push_back(obj);
 }
 
-void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength)
+void QPdfEngine::addHiddenField(const QRectF &r, const QMap<QString, QString> &data, const QString &value, const QString &name)
 {
     Q_D(QPdfEngine);
     uint obj = d->addXrefEntry(-1);
@@ -280,7 +351,7 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     if (d->formFieldList == -1) d->formFieldList = d->requestObject();
     d->xprintf("<<\n"
                "/Type /Annot\n"
-               "/Parrent %d 0 R\n"
+               "/Parent %d 0 R\n"
                "/Rect[", d->formFieldList);
     d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
@@ -289,11 +360,12 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     d->xprintf("]\n"
                "/BS<</S/I>>\n"
                "/FT/Tx\n"
+               "/F 6"
                "/Subtype/Widget\n"
                "/P %d 0 R\n", d->pages.back());
-    if (!text.isEmpty()) {
+    if (!value.isEmpty()) {
         d->xprintf("/V");
-        d->printString(text);
+        d->printString(value);
         d->xprintf("\n");
     }
     if (!name.isEmpty()) {
@@ -301,16 +373,159 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
         d->printString(name);
         d->xprintf("\n");
     }
+    d->xprintf("/DA(/Helv 12 Tf 0 g)\n"
+               "/Ff 0\n"
+               ">>\n"
+               "endobj\n");
+    d->currentPage->annotations.push_back(obj);
+    d->formFields.push_back(obj);
+}
+void QPdfEngine::addTextField(const QRectF &r, const QMap<QString, QString> &data, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength)
+{
+    Q_D(QPdfEngine);
+    if (d->formFieldList == -1) d->formFieldList = d->requestObject();
+
+    if (!d->formFieldParents.contains(name)) {
+        QFormFieldParent* form = new QFormFieldParent();
+        form->ref = d->requestObject();
+        form->type = "Tx";
+        form->name = name;
+        form->value = text;
+        if (data.contains("acroform-validation")) {
+            form->JSvalidation_ref = this->addJavaScript(data["acroform-validation"]);
+        }
+        else {
+            form->JSvalidation_ref = -1;
+        }
+        d->formFields.push_back(form->ref);
+        d->formFieldParents[name] = form;
+    }
+    int onBlurRef = -1;
+
+    //handling javascript
+    if (data.contains("acroform-on-blur")) {
+        onBlurRef = this->addJavaScript(data["acroform-on-blur"]);
+    }
+
+    uint obj = d->addXrefEntry(-1);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    d->xprintf("<<\n"
+               "/Type /Annot\n"
+               "/Parent %d 0 R\n"
+               "/Rect[", d->formFieldParents[name]->ref);
+
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]\n"
+               "/BS<</W 1/S/S>>\n"
+               "/FT/Tx\n"
+               "/Subtype/Widget\n"
+               "/P %d 0 R\n", d->pages.back());
+    // writing javascript actions
+    if (onBlurRef > 0) {
+        d->xprintf("/AA<</Bl %d 0 R>>", onBlurRef);
+    }
+    // alignment
+    if (data.contains("acroform-align")) {
+        uint align = -1;
+        if (data["acroform-align"].compare("left", Qt::CaseInsensitive) == 0) {
+            align = 0;
+        }
+        else if (data["acroform-align"].compare("center", Qt::CaseInsensitive) == 0){
+            align = 1;
+        }
+        else if (data["acroform-align"].compare("right", Qt::CaseInsensitive) == 0){
+            align = 2;
+        }
+        if (align != -1) {
+            d->xprintf("/Q %d\n",align);
+        }
+    }
+
+//    if (!text.isEmpty()) {
+//        d->xprintf("/V");
+//        d->printString(text);
+//        d->xprintf("\n");
+//    }
     if (maxLength >= 0)
         d->xprintf("/MaxLen %d\n",maxLength);
-    d->xprintf("/DA(/Helv 12 Tf 0 g)\n"
-               "/Ff %d\n"
+    d->xprintf("/Ff %d\n"
                ">>\n"
                "endobj\n",
                (readOnly?1:0)<<0 | (password?1:0)<<13 | (multiLine?1:0)<<12
         );
     d->currentPage->annotations.push_back(obj);
-    d->formFields.push_back(obj);
+
+    d->formFieldParents[name]->children.push_back(obj);
+}
+
+void QPdfEngine::addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name,const QString &option_list,const QString &default_value, bool readOnly) {
+    Q_D(QPdfEngine);
+    //Note that the pdf spec sayes that we should add some sort of default appearence atleast for yes, which we dont ghost script provides one, however acroread does not
+    if (d->formFieldList == -1) d->formFieldList = d->requestObject();
+
+    if (!d->formFieldParents.contains(name)) {
+        QFormFieldParent* form = new QFormFieldParent();
+        form->ref = d->requestObject();
+        form->type = "Ch";
+        form->name = name;
+        form->value = default_value;
+        form->option_list = option_list;
+        if (data.contains("acroform-validation")) {
+            form->JSvalidation_ref = this->addJavaScript(data["acroform-validation"]);
+        }
+        else {
+            form->JSvalidation_ref = -1;
+        }
+        d->formFields.push_back(form->ref);
+        d->formFieldParents[name] = form;
+    }
+    int onBlurRef = -1;
+    //handling javascript
+    if (data.contains("acroform-on-blur")) {
+        onBlurRef = this->addJavaScript(data["acroform-on-blur"]);
+    }
+
+    uint obj = d->addXrefEntry(-1);
+    char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    d->xprintf("<</P %d 0 R\n", d->pages.back());
+    d->xprintf("/Parent %d 0 R", d->formFieldParents[name]->ref);
+    // writing javascript actions
+    if (onBlurRef != -1) {
+        d->xprintf("/AA<</Bl %d 0 R>>", onBlurRef);
+    }
+    // alignment
+    if (data.contains("acroform-align")) {
+        uint align = -1;
+        if (data["acroform-align"].compare("left", Qt::CaseInsensitive) == 0) {
+            align = 0;
+        }
+        else if (data["acroform-align"].compare("center", Qt::CaseInsensitive) == 0){
+            align = 1;
+        }
+        else if (data["acroform-align"].compare("right", Qt::CaseInsensitive) == 0){
+            align = 2;
+        }
+        if (align != -1) {
+            d->xprintf("/Q %d\n",align);
+        }
+    }
+    d->xprintf("/F 4");
+    d->xprintf("/Subtype/Widget/TI 1/Type/Annot");
+    d->xprintf("/Rect[", d->formFieldList);
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]>>\n");
+
+    d->currentPage->annotations.push_back(obj);
+    //d->formFields.push_back(obj);
+    d->formFieldParents[name]->children.push_back(obj);
 }
 
 void QPdfEngine::drawPixmap (const QRectF &rectangle, const QPixmap &pixmap, const QRectF &sr, const QByteArray * data)
