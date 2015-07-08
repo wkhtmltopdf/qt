@@ -1039,7 +1039,8 @@ qint64 QNativeSocketEnginePrivate::nativeRead(char *data, qint64 maxSize)
 #endif
         case EAGAIN:
             // No data was available for reading
-            r = -2;
+            //r = -2;
+            r = 0;
             break;
         case EBADF:
         case EINVAL:
