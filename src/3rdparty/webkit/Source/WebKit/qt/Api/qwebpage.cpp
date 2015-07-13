@@ -3215,6 +3215,11 @@ bool QWebPage::isContentEditable() const
     return d->page->isEditable();
 }
 
+void QWebPage::setDevicePixelRatio(qreal devicePixelRatio)
+{
+    d->pixelRatio = devicePixelRatio;
+}
+
 /*!
     \property QWebPage::forwardUnsupportedContent
     \brief whether QWebPage should forward unsupported content

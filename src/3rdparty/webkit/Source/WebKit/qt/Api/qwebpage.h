@@ -308,6 +308,8 @@ public:
     void setContentEditable(bool editable);
     bool isContentEditable() const;
 
+    void setDevicePixelRatio(qreal devicePixelRatio);
+
 #ifndef QT_NO_CONTEXTMENU
     bool swallowContextMenuEvent(QContextMenuEvent *event);
 #endif
