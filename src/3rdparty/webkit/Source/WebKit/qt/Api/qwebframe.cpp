@@ -223,17 +223,11 @@ QWebPrinterPrivate::QWebPrinterPrivate(const QWebFrame *f, QPaintDevice *printer
     , frame(f)
     , graphicsContext(&p)
 {
-    const qreal zoomFactorX = (qreal)printer->logicalDpiX() / qt_defaultDpi();
-    const qreal zoomFactorY = (qreal)printer->logicalDpiY() / qt_defaultDpi();
-    IntRect pageRect(0, 0,
-                     int(printer->width() / zoomFactorX),
-                     int(printer->height() / zoomFactorY));
-    
+    IntRect pageRect(0, 0, printer->width(), printer->height());
     printContext.begin(pageRect.width(), pageRect.height());
     float pageHeight = 0;
     printContext.computePageRects(pageRect, /* headerHeight */ 0, /* footerHeight */ 0, /* userScaleFactor */ 1.0, pageHeight);
-    
-    painter.scale(zoomFactorX, zoomFactorY);
+
     printWidth = pageRect.width();
 }
 
