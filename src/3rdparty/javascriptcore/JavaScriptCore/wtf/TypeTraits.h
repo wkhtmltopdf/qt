@@ -166,7 +166,12 @@ namespace WTF {
         typedef T Type;
     };
 
-#if (defined(__GLIBCXX__) && (__GLIBCXX__ >= 20070724) && defined(__GXX_EXPERIMENTAL_CXX0X__)) || (defined(_MSC_VER) && (_MSC_VER >= 1600 && _MSC_VER < 1900))
+#if (defined(_MSC_VER) && (_MSC_VER >= 1900))
+
+    template<typename T> struct HasTrivialConstructor : public std::is_trivially_default_constructible<T> { };
+    template<typename T> struct HasTrivialDestructor : public std::is_trivially_destructible<T> { };
+
+#elif (defined(__GLIBCXX__) && (__GLIBCXX__ >= 20070724) && defined(__GXX_EXPERIMENTAL_CXX0X__)) || (defined(_MSC_VER) && (_MSC_VER >= 1600))
 
     // GCC's libstdc++ 20070724 and later supports C++ TR1 type_traits in the std namespace.
     // VC10 (VS2010) and later support C++ TR1 type_traits in the std::tr1 namespace.

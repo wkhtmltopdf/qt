@@ -38,7 +38,7 @@ DEPENDPATH += $$OUT_PWD
 
 DEFINES += BUILDING_QT__=1
 building-libs {
-    win32-msvc*|win32-icc: INCLUDEPATH += $$PWD/JavaScriptCore/os-win32
+    win32-msvc200*|win32-msvc2010|win32-msvc2012|win32-msvc2013|win32-icc: INCLUDEPATH += $$PWD/JavaScriptCore/os-win32
 } else {
     CONFIG(QTDIR_build) {
         QT += webkit
