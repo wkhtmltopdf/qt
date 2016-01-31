@@ -550,7 +550,40 @@ void RenderTable::paintObject(PaintInfo& paintInfo, int tx, int ty)
             if (info.rect.y() > childPoint.y() + m_head->y()) {
                 repaintedHeadPoint = IntPoint(childPoint.x(), info.rect.y() - m_head->y());
                 repaintedHead = true;
-                dynamic_cast<RenderObject*>(m_head)->paint(info, repaintedHeadPoint.x(), repaintedHeadPoint.y());
+
+                RenderObject* headObj = dynamic_cast<RenderObject*>(m_head);
+                headObj->paint(info, repaintedHeadPoint.x(), repaintedHeadPoint.y());
+
+                RenderLayer* myLayer  = headObj->enclosingLayer();
+                if(myLayer){
+                    for (RenderObject* row = dynamic_cast<RenderObject*>(m_head)->firstChild(); row; row = row->nextSibling()) {
+                        if (row->isTableRow()) {
+                            for (RenderObject* cell = row->firstChild(); cell; cell = cell->nextSibling()) {
+                                if (cell->isTableCell()) {
+                                    for (RenderObject* contentObj = cell->firstChild(); contentObj; contentObj = contentObj->nextSibling()) {
+                                        if (contentObj->isBox()){
+
+                                            RenderLayer* currInnerLayer = contentObj->enclosingLayer();
+
+                                            if(currInnerLayer){
+                                                RenderBox* currContentBox = toRenderBox(contentObj);
+
+                                                int origY = currContentBox->y();
+                                                int delta = m_head->y()-origY;
+                                                int newY = (repaintedHeadPoint.y()+delta)+currContentBox->height();
+
+                                                currContentBox->setY(newY);
+                                                currInnerLayer->updateLayerPosition();
+                                                myLayer->repaintIncludingDescendants();
+                                                currContentBox->setY(origY);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         if (m_foot) {
