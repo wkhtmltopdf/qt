@@ -569,8 +569,7 @@ void RenderTable::paintObject(PaintInfo& paintInfo, int tx, int ty)
                                                 RenderBox* currContentBox = toRenderBox(contentObj);
 
                                                 int origY = currContentBox->y();
-                                                int delta = m_head->y()-origY;
-                                                int newY = (repaintedHeadPoint.y()+delta)+currContentBox->height();
+                                                int newY = (repaintedHeadPoint.y()-ty)+(m_head->height()-currContentBox->height());
 
                                                 currContentBox->setY(newY);
                                                 currInnerLayer->updateLayerPosition();
