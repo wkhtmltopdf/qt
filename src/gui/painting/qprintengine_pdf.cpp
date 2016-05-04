@@ -246,7 +246,7 @@ void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name,
     if (d->formFieldList == -1) d->formFieldList = d->requestObject();
     d->xprintf("<<\n"
                "/Type /Annot\n"
-               "/Parrent %d 0 R\n"
+               "/Parent %d 0 R\n"
                "/Rect[", d->formFieldList);
     d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
