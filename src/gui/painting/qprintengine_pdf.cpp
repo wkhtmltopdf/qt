@@ -207,6 +207,7 @@ bool QPdfEngine::end()
         d->xprintf("]\n"
                    "/DR<</Font<</Helv %d 0 R>>>>\n"
                    "/DA(/Helv 0 Tf 0 g)\n"
+                   "/NeedAppearances true\n"
                    ">>\n"
                    "endobj\n", font);
     }
@@ -246,7 +247,7 @@ void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name,
     if (d->formFieldList == -1) d->formFieldList = d->requestObject();
     d->xprintf("<<\n"
                "/Type /Annot\n"
-               "/Parrent %d 0 R\n"
+               "/Parent %d 0 R\n"
                "/Rect[", d->formFieldList);
     d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
@@ -278,9 +279,17 @@ void QPdfEngine::addTextField(const QRectF &r, const QString &text, const QStrin
     char buf[256];
     QRectF rr = d->pageMatrix().mapRect(r);
     if (d->formFieldList == -1) d->formFieldList = d->requestObject();
+    /*
+     * http://www.adobe.com/content/dam/Adobe/en/devnet/pdf/pdfs/PDF32000_2008.pdf
+     *
+     * 12.5.3 Annotation Flags - bit 3:
+     * (PDF 1.2) If set, print the annotation when the page is printed. If clear,
+     * never print the annotation, regardless of whether it is displayed on the screen.
+     */
     d->xprintf("<<\n"
                "/Type /Annot\n"
-               "/Parrent %d 0 R\n"
+               "/F 4\n" // printable flag
+               "/Parent %d 0 R\n"
                "/Rect[", d->formFieldList);
     d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
