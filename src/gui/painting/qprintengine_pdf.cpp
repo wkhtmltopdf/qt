@@ -207,6 +207,7 @@ bool QPdfEngine::end()
         d->xprintf("]\n"
                    "/DR<</Font<</Helv %d 0 R>>>>\n"
                    "/DA(/Helv 0 Tf 0 g)\n"
+                   "/NeedAppearances true\n"
                    ">>\n"
                    "endobj\n", font);
     }
