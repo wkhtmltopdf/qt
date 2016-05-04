@@ -207,6 +207,7 @@ bool QPdfEngine::end()
         d->xprintf("]\n"
                    "/DR<</Font<</Helv %d 0 R>>>>\n"
                    "/DA(/Helv 0 Tf 0 g)\n"
+                   "/NeedAppearances true\n"
                    ">>\n"
                    "endobj\n", font);
     }
@@ -242,7 +243,6 @@ void QPdfEngine::addCheckBox(const QRectF &r, bool checked, const QString &name,
     uint obj = d->addXrefEntry(-1);
     char buf[256];
     QRectF rr = d->pageMatrix().mapRect(r);
-    //Note that the pdf spec sayes that we should add some sort of default appearence atleast for yes, which we dont ghost script provides one, however acroread does not
     if (d->formFieldList == -1) d->formFieldList = d->requestObject();
     d->xprintf("<<\n"
                "/Type /Annot\n"
