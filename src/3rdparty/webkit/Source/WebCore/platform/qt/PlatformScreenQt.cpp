@@ -45,11 +45,11 @@ namespace WebCore {
 
 static unsigned long qt_get_screen_width() {
   char *width = getenv("QT_SCREEN_WIDTH");
-  unsigned long screen_width = 800;
+  unsigned long screen_width = 1366;
 
   if (width != NULL) {
       unsigned long screen_width_tmp = atol(width);
-      if ((screen_width_tmp >= 800) && (screen_width_tmp <= 3840)) {
+      if ((screen_width_tmp >= 320) && (screen_width_tmp <= 7680)) {
          return screen_width_tmp;
       }
   }
@@ -59,11 +59,11 @@ static unsigned long qt_get_screen_width() {
 
 static unsigned long qt_get_screen_height() {
   char *height = getenv("QT_SCREEN_HEIGHT");
-  unsigned long screen_height = 600;
+  unsigned long screen_height = 768;
 
   if (height != NULL) {
      unsigned long screen_height_tmp = atol(height);
-      if ((screen_height_tmp >= 600) && (screen_height_tmp <= 2160)) {
+      if ((screen_height_tmp >= 240) && (screen_height_tmp <= 4320)) {
          return screen_height_tmp;
       }
   }
