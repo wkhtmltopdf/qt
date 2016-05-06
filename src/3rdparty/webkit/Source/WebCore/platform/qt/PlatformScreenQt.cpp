@@ -44,7 +44,7 @@
 namespace WebCore {
 
 static unsigned long qt_get_screen_width() {
-  char *width = getenv("QT_SCREEN_WIDTH");
+  char *width = getenv("WKHTMLTOX_SCREEN_WIDTH");
   unsigned long screen_width = 1366;
 
   if (width != NULL) {
@@ -58,7 +58,7 @@ static unsigned long qt_get_screen_width() {
 
 
 static unsigned long qt_get_screen_height() {
-  char *height = getenv("QT_SCREEN_HEIGHT");
+  char *height = getenv("WKHTMLTOX_SCREEN_HEIGHT");
   unsigned long screen_height = 768;
 
   if (height != NULL) {
