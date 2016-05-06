@@ -38,8 +38,35 @@
 
 #include <QApplication>
 #include <QDesktopWidget>
+#include <QByteArray>
 
 namespace WebCore {
+
+static int wkhtmltox_screen_width()
+{
+    QByteArray override = qgetenv("WKHTMLTOX_SCREEN_WIDTH");
+
+    bool ok;
+    int width = override.toInt(&ok);
+    if (ok)
+        return qMax(320, qMin(7680, width));
+
+    return 1366; // default screen width
+}
+
+static int wkhtmltox_screen_height()
+{
+    QByteArray override = qgetenv("WKHTMLTOX_SCREEN_HEIGHT");
+
+    bool ok;
+    int height = override.toInt(&ok);
+    if (ok)
+        return qMax(240, qMin(4320, height));
+
+    return 768; // default screen width
+}
+
+
 
 static QWidget* qwidgetForPage(const Page* page)
 {
@@ -55,7 +82,7 @@ static QWidget* qwidgetForPage(const Page* page)
 FloatRect screenRect(const Page* page)
 {
     if (QApplication::type() == QApplication::Tty)
-        return FloatRect(0,0,800,600);
+        return FloatRect(0,0,wkhtmltox_screen_width(),wkhtmltox_screen_height());
 
     QWidget* qw = qwidgetForPage(page);
     if (!qw)

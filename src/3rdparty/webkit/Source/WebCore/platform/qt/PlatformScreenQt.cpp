@@ -39,8 +39,33 @@
 #include "QWebPageClient.h"
 #include <QApplication>
 #include <QDesktopWidget>
+#include <QByteArray>
 
 namespace WebCore {
+
+static int wkhtmltox_screen_width()
+{
+    QByteArray override = qgetenv("WKHTMLTOX_SCREEN_WIDTH");
+
+    bool ok;
+    int width = override.toInt(&ok);
+    if (ok)
+        return qMax(320, qMin(7680, width));
+
+    return 1366; // default screen width
+}
+
+static int wkhtmltox_screen_height()
+{
+    QByteArray override = qgetenv("WKHTMLTOX_SCREEN_HEIGHT");
+
+    bool ok;
+    int height = override.toInt(&ok);
+    if (ok)
+        return qMax(240, qMin(4320, height));
+
+    return 768; // default screen height
+}
 
 static int screenNumber(Widget* w)
 {
@@ -101,7 +126,7 @@ bool screenIsMonochrome(Widget* w)
 FloatRect screenRect(Widget* w)
 {
     if (QApplication::type() == QApplication::Tty)
-        return FloatRect(0,0,1366,768);
+        return FloatRect(0,0,wkhtmltox_screen_width(),wkhtmltox_screen_height());
 
     QRect r = QApplication::desktop()->screenGeometry(screenNumber(w));
     return FloatRect(r.x(), r.y(), r.width(), r.height());
@@ -110,7 +135,7 @@ FloatRect screenRect(Widget* w)
 FloatRect screenAvailableRect(Widget* w)
 {
     if (QApplication::type() == QApplication::Tty)
-        return FloatRect(0,0,1366,768);
+        return FloatRect(0,0,wkhtmltox_screen_width(),wkhtmltox_screen_height());
 
     QRect r = QApplication::desktop()->availableGeometry(screenNumber(w));
     return FloatRect(r.x(), r.y(), r.width(), r.height());
