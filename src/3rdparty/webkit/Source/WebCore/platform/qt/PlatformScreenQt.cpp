@@ -39,16 +39,17 @@
 #include "QWebPageClient.h"
 #include <QApplication>
 #include <QDesktopWidget>
-#include <stdlib.h>
+#include <QByteArray>
 
 namespace WebCore {
 
 static unsigned long qt_get_screen_width() {
-  char *width = getenv("WKHTMLTOX_SCREEN_WIDTH");
+  QByteArray width = qgetenv("WKHTMLTOX_SCREEN_WIDTH");
   unsigned long screen_width = 1366;
 
-  if (width != NULL) {
-      unsigned long screen_width_tmp = atol(width);
+  bool ok;
+  unsigned long screen_width_tmp = width.toULong(&ok, 10);
+  if (ok == true) {
       if ((screen_width_tmp >= 320) && (screen_width_tmp <= 7680)) {
          return screen_width_tmp;
       }
@@ -58,11 +59,12 @@ static unsigned long qt_get_screen_width() {
 
 
 static unsigned long qt_get_screen_height() {
-  char *height = getenv("WKHTMLTOX_SCREEN_HEIGHT");
+  QByteArray height = qgetenv("WKHTMLTOX_SCREEN_HEIGHT");
   unsigned long screen_height = 768;
 
-  if (height != NULL) {
-     unsigned long screen_height_tmp = atol(height);
+  bool ok;
+  unsigned long screen_width_tmp = height.toULong(&ok, 10);
+  if (ok == true) {
       if ((screen_height_tmp >= 240) && (screen_height_tmp <= 4320)) {
          return screen_height_tmp;
       }
