@@ -43,35 +43,29 @@
 
 namespace WebCore {
 
-static unsigned long qt_get_screen_width() {
-  QByteArray width = qgetenv("WKHTMLTOX_SCREEN_WIDTH");
-  unsigned long screen_width = 1366;
+static unsigned int wkhtmltox_screen_width()
+{
+    QByteArray override = qgetenv("WKHTMLTOX_SCREEN_WIDTH");
 
-  bool ok;
-  unsigned long screen_width_tmp = width.toULong(&ok, 10);
-  if (ok == true) {
-      if ((screen_width_tmp >= 320) && (screen_width_tmp <= 7680)) {
-         return screen_width_tmp;
-      }
-  }
-  return screen_width;
+    bool ok;
+    unsigned int width = override.toUInt(&ok);
+    if (ok)
+        return qMax(320, qMin(7680, width));
+
+    return 1366; // default screen width
 }
 
+static unsigned int wkhtmltox_screen_height()
+{
+    QByteArray override = qgetenv("WKHTMLTOX_SCREEN_HEIGHT");
 
-static unsigned long qt_get_screen_height() {
-  QByteArray height = qgetenv("WKHTMLTOX_SCREEN_HEIGHT");
-  unsigned long screen_height = 768;
+    bool ok;
+    unsigned int height = override.toUInt(&ok);
+    if (ok)
+        return qMax(240, qMin(4320, height));
 
-  bool ok;
-  unsigned long screen_width_tmp = height.toULong(&ok, 10);
-  if (ok == true) {
-      if ((screen_height_tmp >= 240) && (screen_height_tmp <= 4320)) {
-         return screen_height_tmp;
-      }
-  }
-  return screen_height;
+    return 768; // default screen height
 }
-
 
 static int screenNumber(Widget* w)
 {
@@ -132,7 +126,7 @@ bool screenIsMonochrome(Widget* w)
 FloatRect screenRect(Widget* w)
 {
     if (QApplication::type() == QApplication::Tty)
-        return FloatRect(0,0,qt_get_screen_width(),qt_get_screen_height());
+        return FloatRect(0,0,wkhtmltox_screen_width(),wkhtmltox_screen_height());
 
     QRect r = QApplication::desktop()->screenGeometry(screenNumber(w));
     return FloatRect(r.x(), r.y(), r.width(), r.height());
@@ -141,7 +135,7 @@ FloatRect screenRect(Widget* w)
 FloatRect screenAvailableRect(Widget* w)
 {
     if (QApplication::type() == QApplication::Tty)
-        return FloatRect(0,0,qt_get_screen_width(),qt_get_screen_height());
+        return FloatRect(0,0,wkhtmltox_screen_width(),wkhtmltox_screen_height());
 
     QRect r = QApplication::desktop()->availableGeometry(screenNumber(w));
     return FloatRect(r.x(), r.y(), r.width(), r.height());
