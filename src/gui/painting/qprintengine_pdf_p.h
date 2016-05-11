@@ -233,6 +233,7 @@ private:
         streampos += data.size();
     }
 
+    bool smartCompressDeflate(const char *source, int size, QByteArray& compressed, unsigned long maxSize = 0);
     int writeCompressed(const char *src, int len);
     inline int writeCompressed(const QByteArray &data) { return writeCompressed(data.constData(), data.length()); }
     int writeCompressed(QIODevice *dev);
