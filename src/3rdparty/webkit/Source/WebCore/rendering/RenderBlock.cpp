@@ -3234,6 +3234,8 @@ void RenderBlock::removeFloatingObjectsBelow(FloatingObject* lastFloat, int logi
         floatingObjectSet.removeLast();
         ASSERT(!curr->m_originatingLine);
         delete curr;
+        if (floatingObjectSet.isEmpty())
+            break;
         curr = floatingObjectSet.last();
     }
 }
