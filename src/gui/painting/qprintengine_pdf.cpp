@@ -745,6 +745,14 @@ void QPdfEnginePrivate::convertImage(const QImage & image, QByteArray & imageDat
                 *(data++) = qGray(*rgb);
                 ++rgb;
             }
+        } else if (image.format() == QImage::Format_ARGB32_Premultiplied) {
+            for (int x = 0; x < w; ++x) {
+                double multiplier = (qAlpha(*rgb) / 255.0) == 0 ? 0 : 1.0 / (qAlpha(*rgb) / 255.0);
+                *(data++) = qRed(*rgb) * multiplier;
+                *(data++) = qGreen(*rgb) * multiplier;
+                *(data++) = qBlue(*rgb) * multiplier;
+                ++rgb;
+            }
         } else {
             for (int x = 0; x < w; ++x) {
                 *(data++) = qRed(*rgb);
@@ -856,7 +864,9 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
             image = image.convertToFormat(QImage::Format_Mono);
     } else {
         *bitmap = false;
-        if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32)
+        if (image.format() != QImage::Format_RGB32
+            && image.format() != QImage::Format_ARGB32
+            && image.format() != QImage::Format_ARGB32_Premultiplied)
             image = image.convertToFormat(QImage::Format_ARGB32);
     }
     QImage::Format format = image.format();
