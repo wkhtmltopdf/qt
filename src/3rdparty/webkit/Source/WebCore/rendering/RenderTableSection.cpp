@@ -514,6 +514,8 @@ int RenderTableSection::layoutRows(int toAdd, int headHeight, int footHeight)
             int remainingLogicalHeight = pageLogicalHeight - layoutState->pageLogicalOffset(m_rowPos[r]) % pageLogicalHeight;
             int availableHeight = remainingLogicalHeight - footHeight - vspacing;
             RenderTableRow* rowRenderer = m_grid[r].rowRenderer;
+            
+            int rowRequiredHeight = 0;
 
             for (int c = 0; c < nEffCols; c++) {
                 CellStruct& cs = cellAt(r, c);
@@ -523,13 +525,15 @@ int RenderTableSection::layoutRows(int toAdd, int headHeight, int footHeight)
                     continue;
 
                 int cellRequiredHeight = cell->contentLogicalHeight() + cell->paddingTop(false) + cell->paddingBottom(false);
-                int requiredHeight = max(logicalRowHeights[r], cellRequiredHeight);
-                if (requiredHeight >= availableHeight && requiredHeight < pageLogicalHeight) {
-                    pageOffset += remainingLogicalHeight + headHeight;
-                    if (requiredHeight > availableHeight) {
-                        m_rowPos[r] += remainingLogicalHeight + headHeight;
-                    }
-                    break;
+                if( cellRequiredHeight > rowRequiredHeight ){
+                    rowRequiredHeight = cellRequiredHeight;
+                }
+            }
+            int requiredHeight = max(logicalRowHeights[r], rowRequiredHeight);
+            if (requiredHeight >= availableHeight && requiredHeight < pageLogicalHeight) {
+                pageOffset += remainingLogicalHeight + headHeight;
+                if (requiredHeight > availableHeight) {
+                    m_rowPos[r] += remainingLogicalHeight + headHeight;
                 }
             }
         }
