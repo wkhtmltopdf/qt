@@ -56,6 +56,7 @@ public:
     JSC::JSValue strokeText(JSC::ExecState*);
     JSC::JSValue setStrokeColor(JSC::ExecState*);
     JSC::JSValue setFillColor(JSC::ExecState*);
+    JSC::JSValue setLineDash(JSC::ExecState*);
     JSC::JSValue strokeRect(JSC::ExecState*);
     JSC::JSValue drawImage(JSC::ExecState*);
     JSC::JSValue drawImageFromRect(JSC::ExecState*);
@@ -122,6 +123,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionFil
 JSC::EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionStrokeText(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionSetStrokeColor(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionSetFillColor(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionSetLineDash(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionStrokeRect(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionDrawImage(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionDrawImageFromRect(JSC::ExecState*);

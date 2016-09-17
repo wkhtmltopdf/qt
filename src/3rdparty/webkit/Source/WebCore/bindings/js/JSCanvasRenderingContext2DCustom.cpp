@@ -170,6 +170,21 @@ JSValue JSCanvasRenderingContext2D::setStrokeColor(ExecState* exec)
     return jsUndefined();
 }
 
+JSValue JSCanvasRenderingContext2D::setLineDash(ExecState* exec)
+{
+    CanvasRenderingContext2D* context = static_cast<CanvasRenderingContext2D*>(impl());
+    JSValue value = exec->argument(0);
+    JSObject* array = asObject(value);
+    uint32_t length = array->get(exec, JSC::Identifier(exec, "length")).toInt32(exec);
+    DashArray lineDash;
+    for(uint32_t i = 0; i < length; i++) {
+        JSValue v = array->get(exec, i);
+        lineDash.append(v.toNumber(exec));
+    }
+    context->setLineDash(lineDash, lineDash[0]);
+    return jsUndefined();
+}
+
 JSValue JSCanvasRenderingContext2D::strokeRect(ExecState* exec)
 { 
     CanvasRenderingContext2D* context = static_cast<CanvasRenderingContext2D*>(impl());

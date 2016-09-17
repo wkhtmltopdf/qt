@@ -1047,6 +1047,12 @@ void CanvasRenderingContext2D::fillRect(float x, float y, float width, float hei
     didDraw(rect);
 }
 
+void CanvasRenderingContext2D::setLineDash(DashArray lineDash, float dashOffset)
+{
+    GraphicsContext* c = drawingContext();
+    c->setLineDash(lineDash, dashOffset);
+}
+
 void CanvasRenderingContext2D::strokeRect(float x, float y, float width, float height)
 {
     if (!validateRectForCanvas(x, y, width, height))
