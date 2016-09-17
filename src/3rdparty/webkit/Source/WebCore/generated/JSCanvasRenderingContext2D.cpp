@@ -129,7 +129,7 @@ bool JSCanvasRenderingContext2DConstructor::getOwnPropertyDescriptor(ExecState* 
 #define THUNK_GENERATOR(generator)
 #endif
 
-static const HashTableValue JSCanvasRenderingContext2DPrototypeTableValues[45] =
+static const HashTableValue JSCanvasRenderingContext2DPrototypeTableValues[46] =
 {
     { "save", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionSave), (intptr_t)0 THUNK_GENERATOR(0) },
     { "restore", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionRestore), (intptr_t)0 THUNK_GENERATOR(0) },
@@ -167,6 +167,7 @@ static const HashTableValue JSCanvasRenderingContext2DPrototypeTableValues[45] =
     { "strokeText", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionStrokeText), (intptr_t)0 THUNK_GENERATOR(0) },
     { "setStrokeColor", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionSetStrokeColor), (intptr_t)0 THUNK_GENERATOR(0) },
     { "setFillColor", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionSetFillColor), (intptr_t)0 THUNK_GENERATOR(0) },
+    { "setLineDash", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionSetLineDash), (intptr_t)0 THUNK_GENERATOR(0) },
     { "strokeRect", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionStrokeRect), (intptr_t)0 THUNK_GENERATOR(0) },
     { "drawImage", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionDrawImage), (intptr_t)0 THUNK_GENERATOR(0) },
     { "drawImageFromRect", DontDelete | Function, (intptr_t)static_cast<NativeFunction>(jsCanvasRenderingContext2DPrototypeFunctionDrawImageFromRect), (intptr_t)0 THUNK_GENERATOR(0) },
@@ -1145,6 +1146,15 @@ EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionSetFillC
         return throwVMTypeError(exec);
     JSCanvasRenderingContext2D* castedThis = static_cast<JSCanvasRenderingContext2D*>(asObject(thisValue));
     return JSValue::encode(castedThis->setFillColor(exec));
+}
+
+EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionSetLineDash(ExecState* exec)
+{
+    JSValue thisValue = exec->hostThisValue();
+    if (!thisValue.inherits(&JSCanvasRenderingContext2D::s_info))
+        return throwVMTypeError(exec);
+    JSCanvasRenderingContext2D* castedThis = static_cast<JSCanvasRenderingContext2D*>(asObject(thisValue));
+    return JSValue::encode(castedThis->setLineDash(exec));
 }
 
 EncodedJSValue JSC_HOST_CALL jsCanvasRenderingContext2DPrototypeFunctionStrokeRect(ExecState* exec)

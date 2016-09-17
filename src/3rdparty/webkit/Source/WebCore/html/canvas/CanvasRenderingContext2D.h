@@ -31,6 +31,7 @@
 #include "Color.h"
 #include "FloatSize.h"
 #include "Font.h"
+#include "GraphicsContext.h"
 #include "GraphicsTypes.h"
 #include "Path.h"
 #include "PlatformString.h"
@@ -152,6 +153,7 @@ public:
 
     void clearRect(float x, float y, float width, float height);
     void fillRect(float x, float y, float width, float height);
+    void setLineDash(DashArray lineDash, float setLineDash);
     void strokeRect(float x, float y, float width, float height);
     void strokeRect(float x, float y, float width, float height, float lineWidth);
 
