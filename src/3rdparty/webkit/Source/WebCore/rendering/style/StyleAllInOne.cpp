@@ -32,8 +32,6 @@
 #include "NinePieceImage.cpp"
 #include "QuotesData.cpp"
 #include "RenderStyle.cpp"
-#include "SVGRenderStyle.cpp"
-#include "SVGRenderStyleDefs.cpp"
 #include "ShadowData.cpp"
 #include "StyleBackgroundData.cpp"
 #include "StyleBoxData.cpp"

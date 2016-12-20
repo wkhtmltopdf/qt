@@ -61,8 +61,7 @@
 #include <ReplaceSelectionCommand.cpp>
 #include <SelectionController.cpp>
 #include <SetNodeAttributeCommand.cpp>
-#include <SmartReplace.cpp>
-#include <SmartReplaceCF.cpp>
+#include <SmartReplaceICU.cpp>
 #include <SpellingCorrectionController.cpp>
 #include <SpellChecker.cpp>
 #include <SplitElementCommand.cpp>
