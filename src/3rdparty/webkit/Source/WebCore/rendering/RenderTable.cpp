@@ -64,7 +64,7 @@ RenderTable::RenderTable(Node* node)
     setChildrenInline(false);
     m_columnPos.fill(0, 2);
     m_columns.fill(ColumnStruct(), 1);
-    
+
 }
 
 RenderTable::~RenderTable()
@@ -139,7 +139,7 @@ void RenderTable::addChild(RenderObject* child, RenderObject* beforeChild)
                     m_head = toRenderTableSection(child);
                 } else {
                     resetSectionPointerIfNotBefore(m_firstBody, beforeChild);
-                    if (!m_firstBody) 
+                    if (!m_firstBody)
                         m_firstBody = toRenderTableSection(child);
                 }
                 wrapInAnonymousSection = false;
@@ -204,7 +204,7 @@ void RenderTable::addChild(RenderObject* child, RenderObject* beforeChild)
 void RenderTable::removeChild(RenderObject* oldChild)
 {
     RenderBox::removeChild(oldChild);
-    
+
     if (m_caption && oldChild == m_caption && node())
         node()->setNeedsStyleRecalc();
     setNeedsSectionRecalc();
@@ -233,10 +233,10 @@ void RenderTable::computeLogicalWidth()
             marginTotal += style()->marginStart().calcValue(availableLogicalWidth);
         if (!style()->marginEnd().isAuto())
             marginTotal += style()->marginEnd().calcValue(availableLogicalWidth);
-            
+
         // Subtract out our margins to get the available content width.
         int availableContentLogicalWidth = max(0, containerWidthInInlineDirection - marginTotal);
-        
+
         // Ensure we aren't bigger than our max width or smaller than our min width.
         setLogicalWidth(min(availableContentLogicalWidth, maxPreferredLogicalWidth()));
     }
@@ -274,7 +274,7 @@ void RenderTable::layout()
         return;
 
     recalcSectionsIfNeeded();
-        
+
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
     LayoutStateMaintainer statePusher(view(), this, IntSize(x(), y()), style()->isFlippedBlocksWritingMode());
 
@@ -282,7 +282,7 @@ void RenderTable::layout()
     m_overflow.clear();
 
     initMaxMarginValues();
-    
+
     int oldLogicalWidth = logicalWidth();
     computeLogicalWidth();
 
@@ -503,7 +503,7 @@ void RenderTable::paint(PaintInfo& paintInfo, int tx, int ty)
             return;
     }
 
-    bool pushedClip = pushContentsClip(paintInfo, tx, ty);    
+    bool pushedClip = pushContentsClip(paintInfo, tx, ty);
     paintObject(paintInfo, tx, ty);
     if (pushedClip)
         popContentsClip(paintInfo, paintPhase, tx, ty);
@@ -523,7 +523,7 @@ void RenderTable::paintObject(PaintInfo& paintInfo, int tx, int ty)
     // We're done.  We don't bother painting any children.
     if (paintPhase == PaintPhaseBlockBackground)
         return;
-    
+
     // We don't paint our own background, but we do let the kids paint their backgrounds.
     if (paintPhase == PaintPhaseChildBlockBackgrounds)
         paintPhase = PaintPhaseChildBlockBackground;
@@ -550,7 +550,40 @@ void RenderTable::paintObject(PaintInfo& paintInfo, int tx, int ty)
             if (info.rect.y() > childPoint.y() + m_head->y()) {
                 repaintedHeadPoint = IntPoint(childPoint.x(), info.rect.y() - m_head->y());
                 repaintedHead = true;
-                dynamic_cast<RenderObject*>(m_head)->paint(info, repaintedHeadPoint.x(), repaintedHeadPoint.y());
+
+                RenderObject* headObj = dynamic_cast<RenderObject*>(m_head);
+                headObj->paint(info, repaintedHeadPoint.x(), repaintedHeadPoint.y());
+
+                RenderLayer* myLayer  = headObj->enclosingLayer();
+                if(myLayer){
+                    for (RenderObject* row = dynamic_cast<RenderObject*>(m_head)->firstChild(); row; row = row->nextSibling()) {
+                        if (row->isTableRow()) {
+                            for (RenderObject* cell = row->firstChild(); cell; cell = cell->nextSibling()) {
+                                if (cell->isTableCell()) {
+                                    for (RenderObject* contentObj = cell->firstChild(); contentObj; contentObj = contentObj->nextSibling()) {
+                                        if (contentObj->isBox()){
+
+                                            RenderLayer* currInnerLayer = contentObj->enclosingLayer();
+
+                                            if(currInnerLayer){
+                                                RenderBox* currContentBox = toRenderBox(contentObj);
+                                                RenderBox* currRowBox = toRenderBox(row);
+
+                                                int origY = currContentBox->y();
+                                                int newY = (repaintedHeadPoint.y()-ty)+(currRowBox->height()-currContentBox->height());
+
+                                                currContentBox->setY(newY);
+                                                currInnerLayer->updateLayerPosition();
+                                                myLayer->repaintIncludingDescendants();
+                                                currContentBox->setY(origY);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         if (m_foot) {
@@ -653,7 +686,7 @@ void RenderTable::paintBoxDecorations(PaintInfo& paintInfo, int tx, int ty)
     subtractCaptionRect(rect);
 
     paintBoxShadow(paintInfo.context, rect.x(), rect.y(), rect.width(), rect.height(), style(), Normal);
-    
+
     if (isRoot())
         paintRootBoxFillLayers(paintInfo);
     else if (!isBody() || document()->documentElement()->renderer()->hasBackground())
@@ -747,7 +780,7 @@ RenderTableCol* RenderTable::nextColElement(RenderTableCol* current) const
             return 0;
         next = next->nextSibling();
     }
-    
+
     return 0;
 }
 
@@ -868,7 +901,7 @@ void RenderTable::recalcSections() const
                 maxCols = sectionCols;
         }
     }
-    
+
     m_columns.resize(maxCols);
     m_columnPos.resize(maxCols + 1);
 
@@ -899,11 +932,11 @@ int RenderTable::calcBorderStart() const
             if (gb.style() > BHIDDEN)
                 borderWidth = max(borderWidth, static_cast<unsigned>(gb.width()));
         }
-        
+
         RenderTableSection* firstNonEmptySection = m_head ? m_head : (m_firstBody ? m_firstBody : m_foot);
         if (firstNonEmptySection && !firstNonEmptySection->numRows())
             firstNonEmptySection = sectionBelow(firstNonEmptySection, true);
-        
+
         if (firstNonEmptySection) {
             const BorderValue& sb = firstNonEmptySection->style()->borderStart();
             if (sb.style() == BHIDDEN)
@@ -913,7 +946,7 @@ int RenderTable::calcBorderStart() const
                 borderWidth = max(borderWidth, static_cast<unsigned>(sb.width()));
 
             const RenderTableSection::CellStruct& cs = firstNonEmptySection->cellAt(0, 0);
-            
+
             if (cs.hasCells()) {
                 const BorderValue& cb = cs.primaryCell()->style()->borderStart(); // FIXME: Make this work with perpendicualr and flipped cells.
                 if (cb.style() == BHIDDEN)
@@ -957,11 +990,11 @@ int RenderTable::calcBorderEnd() const
             if (gb.style() > BHIDDEN)
                 borderWidth = max(borderWidth, static_cast<unsigned>(gb.width()));
         }
-        
+
         RenderTableSection* firstNonEmptySection = m_head ? m_head : (m_firstBody ? m_firstBody : m_foot);
         if (firstNonEmptySection && !firstNonEmptySection->numRows())
             firstNonEmptySection = sectionBelow(firstNonEmptySection, true);
-        
+
         if (firstNonEmptySection) {
             const BorderValue& sb = firstNonEmptySection->style()->borderEnd();
             if (sb.style() == BHIDDEN)
@@ -971,7 +1004,7 @@ int RenderTable::calcBorderEnd() const
                 borderWidth = max(borderWidth, static_cast<unsigned>(sb.width()));
 
             const RenderTableSection::CellStruct& cs = firstNonEmptySection->cellAt(0, endColumn);
-            
+
             if (cs.hasCells()) {
                 const BorderValue& cb = cs.primaryCell()->style()->borderEnd(); // FIXME: Make this work with perpendicular and flipped cells.
                 if (cb.style() == BHIDDEN)
@@ -1223,7 +1256,7 @@ RenderTableCell* RenderTable::cellBefore(const RenderTableCell* cell) const
     int effCol = colToEffCol(cell->col());
     if (!effCol)
         return 0;
-    
+
     // If we hit a colspan back up to a real cell.
     RenderTableSection::CellStruct& prevCell = section->cellAt(cell->row(), effCol - 1);
     return prevCell.primaryCell();
@@ -1268,7 +1301,7 @@ int RenderTable::firstLineBoxBaseline() const
 IntRect RenderTable::overflowClipRect(int tx, int ty, OverlayScrollbarSizeRelevancy relevancy)
 {
     IntRect rect = RenderBlock::overflowClipRect(tx, ty, relevancy);
-    
+
     // If we have a caption, expand the clip to include the caption.
     // FIXME: Technically this is wrong, but it's virtually impossible to fix this
     // for real until captions have been re-written.
