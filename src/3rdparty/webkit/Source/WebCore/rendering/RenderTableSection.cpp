@@ -529,11 +529,49 @@ int RenderTableSection::layoutRows(int toAdd, int headHeight, int footHeight)
                     rowRequiredHeight = cellRequiredHeight;
                 }
             }
+
             int requiredHeight = max(logicalRowHeights[r], rowRequiredHeight);
-            if (requiredHeight >= availableHeight && requiredHeight < pageLogicalHeight) {
-                pageOffset += remainingLogicalHeight + headHeight;
-                if (requiredHeight > availableHeight) {
-                    m_rowPos[r] += remainingLogicalHeight + headHeight;
+            bool breakAlways = rowRenderer->style()->pageBreakBefore() == PBALWAYS;
+
+            if (breakAlways || (requiredHeight >= availableHeight && requiredHeight < pageLogicalHeight)) {
+                if (rowRenderer->style()->pageBreakBefore() == PBAVOID) {
+                    // We can't break a page here. Try to find a row at the same page (except first row) which we can break before.
+                    int rowToBreakBefore = 0;
+
+                    for (int r1 = r - 1; r1 > 0; --r1) {
+                        RenderTableRow* row1Renderer = m_grid[r1].rowRenderer;
+
+                        if (row1Renderer->style()->pageBreakBefore() != PBAVOID) {
+                            rowToBreakBefore = r1;
+                            break;
+                        }
+                    }
+
+                    if (rowToBreakBefore > 0) {
+                        // Check if rows from rowToBreakBefore to r even fit a single page - otherwise it doesn't make sense.
+
+                        if (m_rowPos[r] - m_rowPos[rowToBreakBefore] + requiredHeight <= pageLogicalHeight - headHeight - footHeight - vspacing) {
+                            int dy = m_rowPos[r] - m_rowPos[rowToBreakBefore] + remainingLogicalHeight + headHeight;
+
+                            // Push all the rows from rowToBreakBefore to r for dy pixels down.
+                            for (int r1 = rowToBreakBefore; r1 <= r; r1++) {
+                                m_rowPos[r1] += dy;
+                            }
+
+                            pageOffset += dy;
+
+                            remainingLogicalHeight = pageLogicalHeight - layoutState->pageLogicalOffset(m_rowPos[r]) % pageLogicalHeight;
+                            availableHeight = remainingLogicalHeight - footHeight - vspacing;
+                        }
+                    }
+                }
+
+                if (breakAlways || requiredHeight >= availableHeight) {
+                    pageOffset += remainingLogicalHeight + headHeight;
+
+                    if (breakAlways || requiredHeight > availableHeight) {
+                        m_rowPos[r] += remainingLogicalHeight + headHeight;
+                    }
                 }
             }
         }
