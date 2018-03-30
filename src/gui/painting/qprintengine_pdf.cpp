@@ -1364,7 +1364,7 @@ void QPdfEnginePrivate::embedFont(QFontSubset *font)
     int toUnicode = requestObject();
 
     QFontEngine::Properties properties = font->fontEngine->properties();
-    QByteArray postscriptName = properties.postscriptName.replace(' ', '_');
+    QByteArray postscriptName = properties.postscriptName.replace(' ', '#20');
 
     {
         qreal scale = 1000/properties.emSquare.toReal();
