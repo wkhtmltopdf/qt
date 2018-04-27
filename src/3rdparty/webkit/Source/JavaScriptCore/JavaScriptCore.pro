@@ -241,3 +241,6 @@ lessThan(QT_GCC_MAJOR_VERSION, 5) {
         }
     }
 }
+
+# explictly select C++98 as webkit doesn't work with later versions
+*-g++*: QMAKE_CXXFLAGS += -std=gnu++98
