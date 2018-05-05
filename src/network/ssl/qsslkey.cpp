@@ -324,7 +324,7 @@ int QSslKey::length() const
     if (d->algorithm == QSsl::Rsa) {
         return q_RSA_bits(d->rsa);
     }else{
-        BIGNUM *p = NULL;
+        const BIGNUM *p = NULL;
         q_DSA_get0_pqg(d->dsa, &p, NULL, NULL);
 	return q_BN_num_bits(p);
     }

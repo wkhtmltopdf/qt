@@ -107,18 +107,28 @@ DEFINEFUNC(int, ASN1_STRING_length, ASN1_STRING *a, a, return 0, return)
 DEFINEFUNC2(int, ASN1_STRING_to_UTF8, unsigned char **a, a, ASN1_STRING *b, b, return 0, return);
 DEFINEFUNC4(long, BIO_ctrl, BIO *a, a, int b, b, long c, c, void *d, d, return -1, return)
 DEFINEFUNC(int, BIO_free, BIO *a, a, return 0, return)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 DEFINEFUNC(BIO *, BIO_new, BIO_METHOD *a, a, return 0, return)
+#else
+DEFINEFUNC(BIO *, BIO_new, const BIO_METHOD *a, a, return 0, return)
+#endif
 DEFINEFUNC2(BIO *, BIO_new_mem_buf, void *a, a, int b, b, return 0, return)
 DEFINEFUNC3(int, BIO_read, BIO *a, a, void *b, b, int c, c, return -1, return)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 DEFINEFUNC(BIO_METHOD *, BIO_s_mem, void, DUMMYARG, return 0, return)
+#else
+DEFINEFUNC(const BIO_METHOD *, BIO_s_mem, void, DUMMYARG, return 0, return)
+#endif
 DEFINEFUNC3(int, BIO_write, BIO *a, a, const void *b, b, int c, c, return -1, return)
 DEFINEFUNC(int, BN_num_bits, const BIGNUM *a, a, return 0, return)
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 DEFINEFUNC(int, CRYPTO_num_locks, DUMMYARG, DUMMYARG, return 0, return)
 DEFINEFUNC(void, CRYPTO_set_locking_callback, void (*a)(int, int, const char *, int), a, return, DUMMYARG)
 DEFINEFUNC(void, CRYPTO_set_id_callback, unsigned long (*a)(), a, return, DUMMYARG)
-#endif
 DEFINEFUNC(void, CRYPTO_free, void *a, a, return, DUMMYARG)
+#else
+DEFINEFUNC(void, OPENSSL_free, void *a, a, return, DUMMYARG)
+#endif
 DEFINEFUNC(void, DSA_free, DSA *a, a, return, DUMMYARG)
 #if  OPENSSL_VERSION_NUMBER < 0x00908000L
 DEFINEFUNC3(X509 *, d2i_X509, X509 **a, a, unsigned char **b, b, long c, c, return 0, return)
@@ -222,7 +232,7 @@ DEFINEFUNC(long, SSL_get_verify_result, SSL *a, a, return -1, return)
 DEFINEFUNC(int, SSL_library_init, void, DUMMYARG, return -1, return)
 DEFINEFUNC(void, SSL_load_error_strings, void, DUMMYARG, return, DUMMYARG)
 #else
-DEFINEFUNC2(int, OPENSSL_init_ssl, uint64_t opts, opts, void *settings, settings, return -1, return)
+DEFINEFUNC2(int, OPENSSL_init_ssl, uint64_t opts, opts, const OPENSSL_INIT_SETTINGS *settings, settings, return -1, return)
 #endif
 DEFINEFUNC(SSL *, SSL_new, SSL_CTX *a, a, return 0, return)
 #if OPENSSL_VERSION_NUMBER >= 0x0090806fL && !defined(OPENSSL_NO_TLSEXT)
@@ -311,7 +321,7 @@ DEFINEFUNC3(DSA *, d2i_DSAPrivateKey, DSA **a, a, unsigned char **b, b, long c, 
 DEFINEFUNC(void, OPENSSL_add_all_algorithms_noconf, void, DUMMYARG, return, DUMMYARG)
 DEFINEFUNC(void, OPENSSL_add_all_algorithms_conf, void, DUMMYARG, return, DUMMYARG)
 #else
-DEFINEFUNC2(int, OPENSSL_init_crypto, uint64_t opts, opts, void *settings, settings, return -1, return)
+DEFINEFUNC2(int, OPENSSL_init_crypto, uint64_t opts, opts, const OPENSSL_INIT_SETTINGS *settings, settings, return -1, return)
 #endif
 DEFINEFUNC3(int, SSL_CTX_load_verify_locations, SSL_CTX *ctx, ctx, const char *CAfile, CAfile, const char *CApath, CApath, return 0, return)
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -338,7 +348,7 @@ DEFINEFUNC(ASN1_TIME *, X509_get_notBefore, X509 *x, x, return 0, return)
 DEFINEFUNC(ASN1_TIME *, X509_getm_notAfter, X509 *x, x, return 0, return)
 DEFINEFUNC(ASN1_TIME *, X509_getm_notBefore, X509 *x, x, return 0, return)
 #endif
-DEFINEFUNC4(void, DSA_get0_pqg, const DSA *d, d, BIGNUM **p, p, BIGNUM **q, q, BIGNUM **g, g, return, return)
+DEFINEFUNC4(void, DSA_get0_pqg, const DSA *d, d, const BIGNUM **p, p, const BIGNUM **q, q, const BIGNUM **g, g, return, return)
 #endif
 
 #ifdef Q_OS_SYMBIAN

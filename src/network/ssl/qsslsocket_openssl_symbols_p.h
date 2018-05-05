@@ -207,22 +207,31 @@ int q_ASN1_STRING_length(ASN1_STRING *a);
 int q_ASN1_STRING_to_UTF8(unsigned char **a, ASN1_STRING *b);
 long q_BIO_ctrl(BIO *a, int b, long c, void *d);
 int q_BIO_free(BIO *a);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 BIO *q_BIO_new(BIO_METHOD *a);
+#else
+BIO *q_BIO_new(const BIO_METHOD *a);
+#endif
 BIO *q_BIO_new_mem_buf(void *a, int b);
 int q_BIO_read(BIO *a, void *b, int c);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 BIO_METHOD *q_BIO_s_mem();
+#else
+const BIO_METHOD *q_BIO_s_mem();
+#endif
 int q_BIO_write(BIO *a, const void *b, int c);
 int q_BN_num_bits(const BIGNUM *a);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 int q_CRYPTO_num_locks();
 void q_CRYPTO_set_locking_callback(void (*a)(int, int, const char *, int));
 void q_CRYPTO_set_id_callback(unsigned long (*a)());
+void q_CRYPTO_free(void *a);
 #else
 #define q_CRYPTO_num_locks() 1
 #define q_CRYPTO_set_locking_callback(a)
 #define q_CRYPTO_set_id_callback(a)
+void q_OPENSSL_free(void *a);
 #endif
-void q_CRYPTO_free(void *a);
 void q_DSA_free(DSA *a);
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L
 // 0.9.8 broke SC and BC by changing this function's signature.
@@ -335,7 +344,7 @@ long q_SSL_get_verify_result(SSL *a);
 int q_SSL_library_init();
 void q_SSL_load_error_strings();
 #else
-int q_OPENSSL_init_ssl(uint64_t opts, void *settings);
+int q_OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings);
 #define q_SSL_library_init() q_OPENSSL_init_ssl(0, NULL)
 #define q_SSL_load_error_strings() q_OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL)
 #endif
@@ -453,7 +462,7 @@ long q_X509_get_version(X509 *x);
 X509_PUBKEY * q_X509_get_X509_PUBKEY(X509 *x);
 int q_RSA_bits(const RSA *rsa);
 int q_DSA_security_bits(const DSA *dsa);
-void q_DSA_get0_pqg(const DSA *d, BIGNUM **p, BIGNUM **q, BIGNUM **g);
+void q_DSA_get0_pqg(const DSA *d, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g);
 #endif
 
 #define q_SKM_sk_num(type, st) ((int (*)(const STACK_OF(type) *))q_sk_num)(st)
@@ -490,7 +499,7 @@ ASN1_TIME *q_X509_getm_notBefore(X509 *x);
 void q_OPENSSL_add_all_algorithms_noconf();
 void q_OPENSSL_add_all_algorithms_conf();
 #else
-int q_OPENSSL_init_crypto(uint64_t opts, void *settings);
+int q_OPENSSL_init_crypto(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings);
 #define q_OPENSSL_add_all_algorithms_conf() q_OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG, NULL)
 #  define q_OPENSSL_add_all_algorithms_noconf() q_OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS, NULL)
 #endif
