@@ -696,7 +696,11 @@ static QMap<QString, QString> _q_mapFromX509Name(X509_NAME *name)
         unsigned char *data = 0;
         int size = q_ASN1_STRING_to_UTF8(&data, q_X509_NAME_ENTRY_get_data(e));
         info[QString::fromUtf8(obj)] = QString::fromUtf8((char*)data, size);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
         q_CRYPTO_free(data);
+#else
+        q_OPENSSL_free(data);
+#endif
     }
     return info;
 }
