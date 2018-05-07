@@ -1472,7 +1472,7 @@ void QPdfEngine::addHyperlink(const QRectF &r, const QUrl &url)
     char buf[256];
     QRectF rr = d->pageMatrix().mapRect(r);
     uint annot = d->addXrefEntry(-1);
-    QByteArray urlascii = url.toString().toLatin1();
+    QByteArray urlascii = url.toEncoded();
     int len = urlascii.size();
     char *url_esc = new char[len * 2 + 1];
     const char * urldata = urlascii.constData();
