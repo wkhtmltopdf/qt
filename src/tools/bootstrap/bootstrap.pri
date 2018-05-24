@@ -56,6 +56,7 @@ hpux-acc*|hpuxi-acc* {
 !contains(QT_CONFIG, zlib):!contains(QT_CONFIG, no-zlib):!cross_compile {
     symbian:LIBS_PRIVATE += -llibz
     else:if(unix|win32-g++*):LIBS_PRIVATE += -lz
+    else:CONFIG(static, shared|static):LIBS += zlib.lib
     else:LIBS += zdll.lib
 }
 win32:LIBS += -luser32

@@ -2,6 +2,7 @@
 contains(QT_CONFIG, system-zlib) {
     symbian:                 LIBS_PRIVATE += -llibz
     else:if(unix|win32-g++*):LIBS_PRIVATE += -lz
+    else:CONFIG(static, shared|static): LIBS += zlib.lib
     else:                    LIBS += zdll.lib
 } else {
     INCLUDEPATH +=  $$PWD/zlib
