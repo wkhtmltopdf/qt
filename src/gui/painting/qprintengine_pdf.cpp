@@ -764,8 +764,6 @@ void QPdfEnginePrivate::convertImage(const QImage & image, QByteArray & imageDat
     }
 }
 
-#include <iostream>
-
 class jpg_header_reader {
 private:
   const QByteArray * data;
