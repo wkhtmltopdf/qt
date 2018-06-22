@@ -50,7 +50,9 @@ PageAllocationAligned PageAllocationAligned::allocate(size_t size, size_t alignm
     vm_map(current_task(), &address, size, alignmentMask, flags, MEMORY_OBJECT_NULL, 0, FALSE, protection, PROT_READ | PROT_WRITE | PROT_EXEC, VM_INHERIT_DEFAULT);
     return PageAllocationAligned(reinterpret_cast<void*>(address), size);
 #else
-    size_t alignmentDelta = alignment - pageSize();
+    size_t alignmentDelta = 0;
+    if (alignment > pageSize())
+        alignmentDelta = alignment - pageSize();
 
     // Resererve with suffcient additional VM to correctly align.
     size_t reservationSize = size + alignmentDelta;
