@@ -181,7 +181,9 @@ JSValue JSCanvasRenderingContext2D::setLineDash(ExecState* exec)
         JSValue v = array->get(exec, i);
         lineDash.append(v.toNumber(exec));
     }
-    context->setLineDash(lineDash, lineDash[0]);
+    if (length > 0) {
+        context->setLineDash(lineDash, lineDash[0]);
+    }
     return jsUndefined();
 }
 
