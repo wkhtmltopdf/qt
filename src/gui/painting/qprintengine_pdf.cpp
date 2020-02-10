@@ -309,16 +309,126 @@ void QPdfEngine::addPageJavaScript(const QMap<QString, QString> &data, const QSt
     d->pageJavaScripts[script_name] = this->addJavaScript(script);
 }
 
+// Create resources used by all checkboxes once
+void QPdfEngine::addCheckBoxResources() {
+    Q_D(QPdfEngine);
+    d->formChkBoxResourceChecked = d->addXrefEntry(-1);
+    d->xprintf("<<"
+    "/BBox [\n"
+    " 0.0\n"
+    " 0.0\n"
+    " 9.5321\n"
+    " 10.7023\n"
+    "]\n"
+    "/FormType 1\n"
+    "/Matrix [\n"
+    "  1.0\n"
+    "  0.0\n"
+    "  0.0\n"
+    "  1.0\n"
+    "  0.0\n"
+    "  0.0\n"
+    "]\n"
+    "/Resources <<\n"
+    "  /Font <<\n"
+    "     /BaseFont /ZapfDingbats\n"
+    "     /Name /ZaDb\n"
+    "     /Subtype /Type1\n"
+    "     /Type /Font\n"
+    "  >>\n"
+    "  /ProcSet [\n"
+    "    /PDF\n"
+    "    /Text\n"
+    "  ]\n"
+    ">>\n"
+    "/Subtype /Form\n"
+    "/Type /XObject\n"
+    "/Length 51\n"
+    ">>\n"
+    "stream\n"
+    "q\n"
+    "0 0 1 rg\n"
+    "BT\n"
+    "/ZaDb 4 Tf\n"
+    "0 0 Td\n"
+    "(4) Tj\n"
+    "ET\n"
+    "Q\n"
+    "endstream\n"
+    "endobj\n");
+
+    d->formChkBoxResourceUnChecked = d->addXrefEntry(-1);
+    d->xprintf("<<"
+        "  /BBox [\n"
+        "    0.0\n"
+        "    0.0\n"
+        "    9.5321\n"
+        "    10.7023\n"
+        "  ]\n"
+        "  /FormType 1\n"
+        "  /Matrix [\n"
+        "    1.0\n"
+        "    0.0\n"
+        "    0.0\n"
+        "    1.0\n"
+        "    0.0\n"
+        "    0.0\n"
+        "  ]\n"
+        "  /Resources <<\n"
+        "    /ProcSet [\n"
+        "      /PDF\n"
+        "    ]\n"
+        "  >>\n"
+        "  /Subtype /Form\n"
+        "  /Type /XObject\n"
+        "  /Length 216\n"
+        ">>\n"
+        "stream\n"
+        "1 g\n"
+        "0 0 9.5321 10.7023 re\n"
+        "f\n"
+        "0.501953 g\n"
+        "1 1 m\n"
+        "1 9.7023 l\n"
+        "8.5321 9.7023 l\n"
+        "7.5321 8.7023 l\n"
+        "2 8.7023 l\n"
+        "2 2 l\n"
+        "f\n"
+        "0.75293 g\n"
+        "8.5321 9.7023 m\n"
+        "8.5321 1 l\n"
+        "1 1 l\n"
+        "2 2 l\n"
+        "7.5321 2 l\n"
+        "7.5321 8.7023 l\n"
+        "f\n"
+        "0 G\n"
+        "0.5 0.5 8.5321 9.7023 re\n"
+        "s\n"
+        "endstream\n"
+        "endobj\n");
+}
+
 void QPdfEngine::addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
     Q_D(QPdfEngine);
-    uint obj = d->addXrefEntry(-1);
+    uint obj;
     char buf[256];
-    QRectF rr = d->pageMatrix().mapRect(r);
+    QRectF rr;
+
+    // Put out the resources we need for a checkbox once
+    if (d->formChkBoxResourceChecked == -1) {
+        addCheckBoxResources();
+    }
+    obj = d->addXrefEntry(-1);
+    rr = d->pageMatrix().mapRect(r);
+
     if (d->formFieldList == -1) d->formFieldList = d->requestObject();
     d->xprintf("<<\n"
                "/Type /Annot\n"
                "/Parent %d 0 R\n"
                "/F 4\n"
+               "/V /Yes\n"
                "/Rect[", d->formFieldList);
     d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
@@ -326,8 +436,20 @@ void QPdfEngine::addCheckBox(const QRectF &r, const QMap<QString, QString> &data
     d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
     d->xprintf("]\n"
                "/FT/Btn\n"
-               "/Subtype/Widget\n"
-               "/P %d 0 R\n", d->pages.back());
+               "/Subtype /Widget\n"
+               "/AP << /N << /Yes %d 0 R /Off %d 0 R >> >>\n"
+               "/BS <<\n"
+               "/S\n"
+               "/W 1\n"
+               ">>\n"
+               "/MK <<\n"
+               "/BC [\n"
+                   "0.0\n"
+                   "0.0\n"
+                   "0.0\n"
+               "]\n"
+               ">>\n"
+               "/P %d 0 R\n", d->formChkBoxResourceChecked, d->formChkBoxResourceUnChecked, d->pages.back());
     if (checked)
         d->xprintf("/AS /Yes\n");
     if (!name.isEmpty()) {
@@ -518,7 +640,7 @@ void QPdfEngine::addComboBox(const QRectF &r, const QMap<QString, QString> &data
     }
     d->xprintf("/F 4");
     d->xprintf("/Subtype/Widget/TI 1/Type/Annot");
-    d->xprintf("/Rect[", d->formFieldList);
+    d->xprintf("/Rect[");
     d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
@@ -1483,6 +1605,9 @@ void QPdfEnginePrivate::writeHeader()
     pageRoot = requestObject();
 
     formFieldList = -1;
+    formChkBoxResourceChecked = -1;
+    formChkBoxResourceUnChecked = -1;
+
     // graphics state
     graphicsState = addXrefEntry(-1);
     xprintf("<<\n"

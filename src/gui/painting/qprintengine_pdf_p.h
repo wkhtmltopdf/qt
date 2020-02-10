@@ -120,6 +120,7 @@ public:
     virtual void addHiddenField(const QRectF &, const QMap<QString, QString> &data, const QString &value, const QString &name);
     virtual void addTextField(const QRectF &r, const QMap<QString, QString> &data, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength);
     virtual void addPageJavaScript(const QMap<QString, QString> &data, const QString &script);
+    virtual void addCheckBoxResources();
     virtual void addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly);
     virtual void addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name, const QString &option_list, const QString &default_value, bool readOnly);
 
@@ -224,6 +225,8 @@ private:
     void embedFont(QFontSubset *font);
 
     int formFieldList;
+    int formChkBoxResourceChecked;
+    int formChkBoxResourceUnChecked;
     QMap<QString, QFormFieldParent*> formFieldParents;
     QMap<QString, uint> pageJavaScripts;
     QVector<uint> formFields;
