@@ -227,6 +227,9 @@ bool QPdfEngine::end()
         if (formFieldParent->type == "Ch") {
             d->xprintf("/Opt %s\n", formFieldParent->option_list.toUtf8().constData());
             d->xprintf("/Ff 131072\n");
+        } else if (formFieldParent->type == "Btn") {
+            // Radio buttons have children
+            d->xprintf("/Ff 49154\n");
         }
         d->xprintf(">>endobj\n");
     }
@@ -307,6 +310,75 @@ void QPdfEngine::addPageJavaScript(const QMap<QString, QString> &data, const QSt
         script_name = QString("UntitledScript%1").arg(d->pageJavaScripts.count());
     }
     d->pageJavaScripts[script_name] = this->addJavaScript(script);
+}
+
+// Create resources for radio buttons
+void QPdfEngine::addRadioBtnResources(QRectF rr, int *formRadioBtnResourceChecked, int *formRadioBtnResourceUnChecked) {
+    Q_D(QPdfEngine);
+    float k = 0.552284749831;
+    float cx=((rr.right()-rr.left())/2);
+    float cy=((rr.bottom()-rr.top())/2);
+    float r=cx; // radius is half the total space we have just like the middle of the space.
+    char streambuf[1024];
+
+    // Drawing a circle. use b to stroke, fill, end on checked. Just stroke, end with f on unchecked.
+    snprintf(streambuf,sizeof(streambuf),"1 g\n"
+            "%.3f %.3f m\n"
+            "%.3f %.3f %.3f %.3f %.3f %.3f c\n"
+            "%.3f %.3f %.3f %.3f %.3f %.3f c\n"
+            "%.3f %.3f %.3f %.3f %.3f %.3f c\n"
+            "%.3f %.3f %.3f %.3f %.3f %.3f c\n",
+            (cx-r), cy,
+            cx - r, cy + k * r, cx - k * r, cy + r, cx, cy + r,
+            cx + k * r, cy + r, cx + r, cy + k * r, cx + r, cy,
+            cx + r, cy - k * r, cx + k * r, cy - r, cx, cy - r,
+            cx - k * r, cy - r, cx - r, cy - k * r, cx - r, cy);
+
+    *formRadioBtnResourceChecked = d->addXrefEntry(-1);
+    d->xprintf("<<\n"
+        "  /BBox [\n"
+        "    0.0\n"
+        "    0.0\n"
+        "    %.3f\n"
+        "    %.3f\n"
+        "  ]\n"
+        "  /FormType 1\n"
+        "  /Resources <<\n"
+        "    /ProcSet [\n"
+        "      /PDF\n"
+        "    ]\n"
+        "  >>\n"
+        "  /Subtype /Form\n"
+        "  /Type /XObject\n"
+        "  /Length %d\n"
+        ">>\n"
+        "stream\n"
+        "%sb\n"
+        "endstream\n"
+        "endobj\n", (rr.right()-rr.left()), (rr.bottom()-rr.top()), strlen(streambuf)+2, streambuf);
+
+    *formRadioBtnResourceUnChecked = d->addXrefEntry(-1);
+    d->xprintf("<<\n"
+        "  /BBox [\n"
+        "    0.0\n"
+        "    0.0\n"
+        "    %.3f\n"
+        "    %.3f\n"
+        "  ]\n"
+        "  /FormType 1\n"
+        "  /Resources <<\n"
+        "    /ProcSet [\n"
+        "      /PDF\n"
+        "    ]\n"
+        "  >>\n"
+        "  /Subtype /Form\n"
+        "  /Type /XObject\n"
+        "  /Length %d\n"
+        ">>\n"
+        "stream\n"
+        "%sf\n"
+        "endstream\n"
+        "endobj\n", (rr.right()-rr.left()), (rr.bottom()-rr.top()), strlen(streambuf)+2, streambuf);
 }
 
 // Create resources used by all checkboxes once
@@ -410,10 +482,108 @@ void QPdfEngine::addCheckBoxResources() {
         "endobj\n");
 }
 
-void QPdfEngine::addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
+void QPdfEngine::addRadioButton(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, const QString &value, bool readOnly) {
     Q_D(QPdfEngine);
     uint obj;
     char buf[256];
+    QRectF rr = d->pageMatrix().mapRect(r);
+    int onBlurRef = -1;
+    int formRadioBtnResourceChecked, formRadioBtnResourceUnChecked;
+
+    addRadioBtnResources(rr, &formRadioBtnResourceChecked, &formRadioBtnResourceUnChecked);
+
+    if (d->formFieldList == -1) d->formFieldList = d->requestObject();
+
+    if (!d->formFieldParents.contains(name)) {
+        QFormFieldParent* form = new QFormFieldParent();
+        form->ref = d->requestObject();
+        form->type = "Btn";
+        form->name = name;
+        form->value = value;
+        if (data.contains("acroform-validation")) {
+            form->JSvalidation_ref = this->addJavaScript(data["acroform-validation"]);
+        }
+        else {
+            form->JSvalidation_ref = -1;
+        }
+        d->formFields.push_back(form->ref);
+        d->formFieldParents[name] = form;
+    }
+
+    //handling javascript
+    if (data.contains("acroform-on-blur")) {
+        onBlurRef = this->addJavaScript(data["acroform-on-blur"]);
+    }
+
+    obj = d->addXrefEntry(-1);
+    d->xprintf("<<\n"
+               "/Type /Annot\n"
+               "/Subtype/Widget\n"
+               "/Parent %d 0 R\n"
+               "/F 4\n"
+               "/AP << /N << /%s %d 0 R /Off %d 0 R >> >>\n"
+//               "/BS <<\n"
+//               "/S\n"
+//               "/W 1\n"
+//               ">>\n"
+//               "/MK <<\n"
+//               "/BC [\n"
+//                   "0.0\n"
+//                   "0.0\n"
+//                   "0.0\n"
+//               "]\n"
+//               ">>\n"
+               "/Rect[", d->formFieldParents[name]->ref, value.toUtf8().data(),
+               formRadioBtnResourceChecked, formRadioBtnResourceUnChecked);
+
+    d->xprintf("%s ", qt_real_to_string(rr.left(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
+    d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
+    d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
+    d->xprintf("]\n"
+               "/P %d 0 R\n", d->pages.back());
+
+    if (checked) {
+        d->xprintf("/AS /%s\n", value);
+    }
+
+    // writing javascript actions
+    if (onBlurRef > 0) {
+        d->xprintf("/AA<</Bl %d 0 R>>", onBlurRef);
+    }
+    // alignment
+    if (data.contains("acroform-align")) {
+        uint align = -1;
+        if (data["acroform-align"].compare("left", Qt::CaseInsensitive) == 0) {
+            align = 0;
+        }
+        else if (data["acroform-align"].compare("center", Qt::CaseInsensitive) == 0){
+            align = 1;
+        }
+        else if (data["acroform-align"].compare("right", Qt::CaseInsensitive) == 0){
+            align = 2;
+        }
+        if (align != -1) {
+            d->xprintf("/Q %d\n",align);
+        }
+    }
+
+//    if (!text.isEmpty()) {
+//        d->xprintf("/V");
+//        d->printString(text);
+//        d->xprintf("\n");
+//    }
+    d->xprintf(">>\n"
+               "endobj\n");
+    d->currentPage->annotations.push_back(obj);
+
+    d->formFieldParents[name]->children.push_back(obj);
+}
+
+void QPdfEngine::addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
+    Q_D(QPdfEngine);
+    char buf[256];
+    uint obj;
     QRectF rr;
 
     // Put out the resources we need for a checkbox once
@@ -645,7 +815,7 @@ void QPdfEngine::addComboBox(const QRectF &r, const QMap<QString, QString> &data
     d->xprintf("%s ", qt_real_to_string(rr.top(),buf));
     d->xprintf("%s ", qt_real_to_string(rr.right(),buf));
     d->xprintf("%s", qt_real_to_string(rr.bottom(),buf));
-    d->xprintf("]>>\n");
+    d->xprintf("]>>\nendobj\n");
 
     d->currentPage->annotations.push_back(obj);
     //d->formFields.push_back(obj);

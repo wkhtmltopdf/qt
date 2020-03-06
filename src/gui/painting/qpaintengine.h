@@ -175,8 +175,8 @@ public:
     virtual void addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
         Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(data);
     }
-    virtual void addRadioButton(const QRectF &r, const QMap<QString, QString> &data, const QString & group="", bool checked=false, const QString &name="", bool readOnly=false) {
-        Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(group); Q_UNUSED(data);
+    virtual void addRadioButton(const QRectF &r, const QMap<QString, QString> &data, bool checked=false, const QString &name="", const QString &value="", bool readOnly=false) {
+        Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(value); Q_UNUSED(data);
     }
     virtual void addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name="", const QString &option_list="[]", const QString &default_value="", bool readOnly=false) {
         Q_UNUSED(r); Q_UNUSED(default_value); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(option_list); Q_UNUSED(data);

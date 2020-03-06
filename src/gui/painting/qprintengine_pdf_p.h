@@ -120,8 +120,10 @@ public:
     virtual void addHiddenField(const QRectF &, const QMap<QString, QString> &data, const QString &value, const QString &name);
     virtual void addTextField(const QRectF &r, const QMap<QString, QString> &data, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength);
     virtual void addPageJavaScript(const QMap<QString, QString> &data, const QString &script);
+    virtual void addRadioBtnResources(QRectF rr, int *formRadioBtnResourceChecked, int *formRadioBtnResourceUnChecked);
     virtual void addCheckBoxResources();
     virtual void addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly);
+    virtual void addRadioButton(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, const QString &value, bool readOnly);
     virtual void addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name, const QString &option_list, const QString &default_value, bool readOnly);
 
     // ### unused, should have something for this in QPrintEngine

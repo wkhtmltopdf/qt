@@ -7457,13 +7457,13 @@ void QPainter::addCheckBox(const QRectF &r, const QMap<QString, QString> &data, 
 }
 
 
-void QPainter::addRadioButton(const QRectF &r, const QMap<QString, QString> &data, const QString & group, bool checked, const QString &name, bool readOnly) {
+void QPainter::addRadioButton(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, const QString &value, bool readOnly) {
     Q_D(QPainter);
     if (!d->engine) {
         qWarning("QPainter::addRadioButton: Painter not active");
         return;
     }
-    d->engine->addRadioButton(worldTransform().mapRect(r), data, group, checked, name, readOnly);
+    d->engine->addRadioButton(worldTransform().mapRect(r), data, checked, name, value, readOnly);
 }
 
 void QPainter::addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name, const QString &option_list, const QString &default_value, bool readOnly) {

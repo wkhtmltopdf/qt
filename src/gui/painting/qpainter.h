@@ -459,7 +459,7 @@ public:
     void addPageJavaScript(const QMap<QString, QString> &data, const QString &script);
     void addTextField(const QRectF &r, const QMap<QString, QString> &data, const QString &text="", const QString &name="", bool multiLine=false, bool password=false, bool readOnly=false, int maxLength=-1);
     void addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked=false, const QString &name="", bool readOnly=false);
-    void addRadioButton(const QRectF &r, const QMap<QString, QString> &data, const QString & group="",  bool checked=false, const QString &name="", bool readOnly=false);
+    void addRadioButton(const QRectF &r, const QMap<QString, QString> &data, bool checked=false, const QString &name="", const QString &value="", bool readOnly=false);
     void addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name="", const QString &option_list="[]", const QString &default_value="", bool readOnly=false);
 
     inline void addHyperlink(int x, int y, int w, int h, const QUrl &url);
