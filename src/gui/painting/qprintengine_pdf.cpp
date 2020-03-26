@@ -544,7 +544,7 @@ void QPdfEngine::addRadioButton(const QRectF &r, const QMap<QString, QString> &d
                "/P %d 0 R\n", d->pages.back());
 
     if (checked) {
-        d->xprintf("/AS /%s\n", value);
+        d->xprintf("/AS /%s\n", value.toUtf8().constData());
     }
 
     // writing javascript actions
