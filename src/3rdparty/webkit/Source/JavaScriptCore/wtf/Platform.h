@@ -1013,7 +1013,7 @@
     || CPU(SPARC64) \
     || CPU(S390X) \
     || CPU(PPC64) \
-    || CPU(MIPS64 \
+    || CPU(MIPS64) \
     || CPU(AARCH64)
 #define WTF_USE_JSVALUE64 1
 #else
