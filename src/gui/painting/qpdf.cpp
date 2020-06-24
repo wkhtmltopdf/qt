@@ -1985,40 +1985,79 @@ void QPdfBaseEnginePrivate::drawTextItem(const QPointF &p, const QTextItemInt &t
 #else
     qreal last_x = 0.;
     qreal last_y = 0.;
+    QList<qreal> coordinates_x;
+    QList<qreal> coordinates_y;
+    QList<int> markerSynthesizedBold;
+    QList<int> glyph_indices_mirror;
+    int last_glyph = font->nGlyphs();
     for (int i = 0; i < glyphs.size(); ++i) {
         qreal x = positions[i].x.toReal();
         qreal y = positions[i].y.toReal();
         if (synthesized & QFontEngine::SynthesizedItalic)
             x += .3*y;
         x /= stretch;
-        char buf[5];
-        int g = font->addGlyph(glyphs[i]);
-        *currentPage << x - last_x << last_y - y << "Td <"
-                     << QPdf::toHex((ushort)g, buf) << "> Tj\n";
+		int new_index = 0;
+        int g = font->addGlyph(glyphs[i], new_index, last_glyph);
+        coordinates_x.append(x-last_x);
+        coordinates_y.append(last_y-y);
+        markerSynthesizedBold.append(0);
+	    if (g==new_index) {
+		 glyph_indices_mirror.append(g);
+	    }
+	    else {
+		for (int i = 0; i < glyph_indices_mirror.size(); i++) {
+		    if (glyph_indices_mirror.at(i) >= new_index) {
+		        glyph_indices_mirror[i]++;
+		    }
+		}
+		    glyph_indices_mirror.append(new_index);
+	    }
         last_x = x;
         last_y = y;
     }
     if (synthesized & QFontEngine::SynthesizedBold) {
-        *currentPage << stretch << (synthesized & QFontEngine::SynthesizedItalic
-                            ? "0 .3 -1 0 0 Tm\n"
-                            : "0 0 -1 0 0 Tm\n");
-        *currentPage << "/Span << /ActualText <> >> BDC\n";
         last_x = 0.5*fe->lineThickness().toReal();
         last_y = 0.;
+		markerSynthesizedBold.append(1);
         for (int i = 0; i < glyphs.size(); ++i) {
             qreal x = positions[i].x.toReal();
             qreal y = positions[i].y.toReal();
             if (synthesized & QFontEngine::SynthesizedItalic)
                 x += .3*y;
             x /= stretch;
-            char buf[5];
-            int g = font->addGlyph(glyphs[i]);
-            *currentPage << x - last_x << last_y - y << "Td <"
-                        << QPdf::toHex((ushort)g, buf) << "> Tj\n";
+			int new_index = 0;
+            int g = font->addGlyph(glyphs[i], new_index, last_glyph);
+            coordinates_x.append(x-last_x);
+            coordinates_y.append(last_y-y);
+            markerSynthesizedBold.append(2);
+	        if (g==new_index) {
+	    	     glyph_indices_mirror.append(g);
+	        }
+	        else {
+		    for (int i = 0; i < glyph_indices_mirror.size(); i++) {
+		        if (glyph_indices_mirror.at(i) >= new_index) {
+		            glyph_indices_mirror[i]++;
+		        }
+		    }
+		        glyph_indices_mirror.append(new_index);
+	        }
             last_x = x;
             last_y = y;
         }
-        *currentPage << "EMC\n";
+    }
+	for (int i = 0; i < glyph_indices_mirror.size(); i++) {
+        char buf[5];
+        if (markerSynthesizedBold.at(i) == 1) {
+            *currentPage << stretch << (synthesized & QFontEngine::SynthesizedItalic
+                            ? "0 .3 -1 0 0 Tm\n"
+                            : "0 0 -1 0 0 Tm\n");
+            *currentPage << "/Span << /ActualText <> >> BDC\n";
+        }
+        *currentPage << coordinates_x.at(i) << coordinates_y.at(i) << "Td <"
+                 << QPdf::toHex((ushort)glyph_indices_mirror.at(i), buf) << "> Tj\n";        
+        if (markerSynthesizedBold.size() == (i+2)) {
+            *currentPage << "EMC\n";
+        }
     }
 #endif
 
