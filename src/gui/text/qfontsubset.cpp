@@ -538,6 +538,32 @@ int QFontSubset::addGlyph(int index)
     return idx;
 }
 
+int QFontSubset::addGlyph(int index, int& new_index, int begin)
+{
+    int idx = glyph_indices.indexOf(index);
+    new_index = glyph_indices.indexOf(index);
+    if (idx < 0) {
+        idx = glyph_indices.size();
+        glyph_indices.append(index);
+        if (begin==1) {
+            qSort(glyph_indices.begin(), glyph_indices.end());
+        }
+        else {
+            if (begin<(glyph_indices.size()-1)) {
+                QList<int> aid;
+                for (int i=begin;i<glyph_indices.size();i++) {
+                     aid.append(glyph_indices.at(i));
+                }
+                qSort(aid.begin(), aid.end());
+                for (int i=0;i<aid.size();i++) {
+                     glyph_indices[begin+i] = aid.at(i);
+                }
+            }
+        }
+        new_index = glyph_indices.indexOf(index);
+    }
+    return idx;
+}
 
 // ------------------------------ Truetype generation ----------------------------------------------
 

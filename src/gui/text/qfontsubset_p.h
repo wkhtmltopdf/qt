@@ -63,8 +63,8 @@ class QFontSubset
 {
 public:
     QFontSubset(QFontEngine *fe, int obj_id = 0)
-        : object_id(obj_id), noEmbed(false), fontEngine(fe), downloaded_glyphs(0), standard_font(false)
-        { fontEngine->ref.ref(); addGlyph(0); }
+        : new_index(0), object_id(obj_id), noEmbed(false), fontEngine(fe), downloaded_glyphs(0), standard_font(false)
+        { fontEngine->ref.ref(); addGlyph(0); addGlyph(0,new_index,1);}
     ~QFontSubset() {
         if (!fontEngine->ref.deref() && fontEngine->cache_count == 0)
             delete fontEngine;
@@ -80,7 +80,9 @@ public:
 
     static QByteArray glyphName(unsigned short unicode, bool symbol);
 
+    int new_index;
     int addGlyph(int index);
+	int addGlyph(int index, int& new_index, int begin);
     const int object_id;
     bool noEmbed;
     QFontEngine *fontEngine;
