@@ -3947,6 +3947,12 @@ QString QWebPage::userAgentForUrl(const QUrl&) const
 }
 
 
+QString QWebPage::overrideMediaType() const
+{
+    return QString();
+}
+
+
 void QWebPagePrivate::_q_onLoadProgressChanged(int)
 {
     m_totalBytes = page->progress()->totalPageAndResourceBytesToLoad();

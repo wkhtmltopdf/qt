@@ -1664,7 +1664,7 @@ PassRefPtr<Widget> FrameLoaderClientQt::createJavaAppletWidget(const IntSize& pl
 
 String FrameLoaderClientQt::overrideMediaType() const
 {
-    return String();
+    return m_webFrame->page()->overrideMediaType();
 }
 
 QString FrameLoaderClientQt::chooseFile(const QString& oldFile)

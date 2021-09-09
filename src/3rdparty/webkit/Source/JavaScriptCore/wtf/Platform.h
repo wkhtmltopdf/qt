@@ -240,6 +240,12 @@
 #define WTF_CPU_X86_64 1
 #endif
 
+/* CPU(AARCH64) - AArch64 */
+#if defined(__aarch64__)
+#define WTF_CPU_AARCH64 1
+#endif
+
+
 /* CPU(ARM) - ARM, any version*/
 #if   defined(arm) \
     || defined(__arm__) \
@@ -1007,7 +1013,8 @@
     || CPU(SPARC64) \
     || CPU(S390X) \
     || CPU(PPC64) \
-    || CPU(MIPS64)
+    || CPU(MIPS64) \
+    || CPU(AARCH64)
 #define WTF_USE_JSVALUE64 1
 #else
 #define WTF_USE_JSVALUE32_64 1
