@@ -166,14 +166,23 @@ public:
     virtual void addHyperlink(const QRectF &r, const QUrl &url) {Q_UNUSED(r); Q_UNUSED(url);}
     virtual void addAnchor(const QRectF &r, const QString &name) {Q_UNUSED(r); Q_UNUSED(name);}
     virtual void addLink(const QRectF &r, const QString &anchor) {Q_UNUSED(r); Q_UNUSED(anchor);}
-    virtual void addTextField(const QRectF &r, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength) {
-        Q_UNUSED(r); Q_UNUSED(text); Q_UNUSED(name); Q_UNUSED(multiLine); Q_UNUSED(password); Q_UNUSED(readOnly); Q_UNUSED(maxLength);
+    virtual void addTextField(const QRectF &r,const QMap<QString, QString> &data, const QString &text, const QString &name, bool multiLine, bool password, bool readOnly, int maxLength) {
+        Q_UNUSED(r); Q_UNUSED(text); Q_UNUSED(name); Q_UNUSED(multiLine); Q_UNUSED(password); Q_UNUSED(readOnly); Q_UNUSED(maxLength); Q_UNUSED(data);
     }
-    virtual void addCheckBox(const QRectF &r, bool checked, const QString &name, bool readOnly) {
-        Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly);
+    virtual void addHiddenField(const QRectF &r, const QMap<QString, QString> &data, const QString &value, const QString &name) {
+        Q_UNUSED(r); Q_UNUSED(name); Q_UNUSED(value); Q_UNUSED(data);
     }
-    virtual void addRadioButton(const QRectF &r, const QString & group="", bool checked=false, const QString &name="", bool readOnly=false) {
-        Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(group);
+    virtual void addCheckBox(const QRectF &r, const QMap<QString, QString> &data, bool checked, const QString &name, bool readOnly) {
+        Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(data);
+    }
+    virtual void addRadioButton(const QRectF &r, const QMap<QString, QString> &data, bool checked=false, const QString &name="", const QString &value="", bool readOnly=false) {
+        Q_UNUSED(r); Q_UNUSED(checked); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(value); Q_UNUSED(data);
+    }
+    virtual void addComboBox(const QRectF &r, const QMap<QString, QString> &data, const QString &name="", const QString &option_list="[]", const QString &default_value="", bool readOnly=false) {
+        Q_UNUSED(r); Q_UNUSED(default_value); Q_UNUSED(name); Q_UNUSED(readOnly); Q_UNUSED(option_list); Q_UNUSED(data);
+    }
+    virtual void addPageJavaScript(const QMap<QString, QString> &data, const QString &script) {
+        Q_UNUSED(data); Q_UNUSED(script);
     }
 
     virtual void drawLines(const QLine *lines, int lineCount);
