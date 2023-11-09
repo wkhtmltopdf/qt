@@ -839,7 +839,31 @@ public:
 
 };
 
+bool QPdfEnginePrivate::smartCompressDeflate(const char *source, int size, QByteArray& compressed, unsigned long maxSize)
+{
+    if (maxSize == 0) {
+        maxSize = ::compressBound(size);
+    }
 
+    const unsigned long initialBufferSize = 10 * 1024 * 1024;
+
+    unsigned long destLen = min(initialBufferSize, maxSize);
+
+    while (true) {
+        compressed.resize(destLen);
+        if (Z_OK == ::compress(reinterpret_cast<Bytef *>(compressed.data()), &destLen, reinterpret_cast<const Bytef *>(source), size)) {
+            compressed.truncate(destLen);
+            break;
+        }
+        if (static_cast<unsigned long>(compressed.size()) >= maxSize) {
+            compressed.clear();
+            return false;
+        }
+        destLen = min(static_cast<unsigned long>(compressed.size()) * 2, maxSize);
+    }
+
+    return true;
+}
 
 /*!
  * Adds an image to the pdf and return the pdf-object id. Returns -1 if adding the image failed.
@@ -915,33 +939,25 @@ int QPdfEnginePrivate::addImage(const QImage &img, bool *bitmap, qint64 serial_n
         if (noneScaled && noneScaled->rect() != image.rect()) {
             QByteArray imageData2;
             convertImage(*noneScaled, imageData2);
-            uLongf len = imageData2.size();
-            uLongf destLen = len + len/100 + 13; // zlib requirement
-            Bytef* dest = new Bytef[destLen];
-            if (Z_OK == ::compress(dest, &destLen, (const Bytef*) imageData2.data(), (uLongf)len) &&
-                (uLongf)destLen < target) {
-                imageData=imageData2;
-                target=destLen;
-                dct=false;
-                uns=true;
+            QByteArray compressed;
+            if (smartCompressDeflate(imageData2.data(), imageData2.size(), compressed, target)) {
+                imageData = imageData2;
+                target = compressed.size();
+                dct = false;
+                uns = true;
             }
-            delete[] dest;
         }
 
         {
             QByteArray imageData2;
             convertImage(image, imageData2);
-            uLongf len = imageData2.size();
-            uLongf destLen = len + len/100 + 13; // zlib requirement
-            Bytef* dest = new Bytef[destLen];
-            if (Z_OK == ::compress(dest, &destLen, (const Bytef*) imageData2.data(), (uLongf)len) &&
-                (uLongf)destLen < target) {
-                imageData=imageData2;
-                target=destLen;
-                dct=false;
-                uns=false;
+            QByteArray compressed;
+            if (smartCompressDeflate(imageData2.data(), imageData2.size(), compressed, target)) {
+                imageData = imageData2;
+                target = compressed.size();
+                dct = false;
+                uns = false;
             }
-            delete[] dest;
         }
 
 
@@ -1190,16 +1206,13 @@ int QPdfEnginePrivate::writeCompressed(const char *src, int len)
 {
 #ifndef QT_NO_COMPRESS
     if(doCompress) {
-        uLongf destLen = len + len/100 + 13; // zlib requirement
-        Bytef* dest = new Bytef[destLen];
-        if (Z_OK == ::compress(dest, &destLen, (const Bytef*) src, (uLongf)len)) {
-            stream->writeRawData((const char*)dest, destLen);
+        QByteArray compressed;
+        if (smartCompressDeflate(src, len, compressed)) {
+            stream->writeRawData((const char*)compressed.data(), compressed.size());
         } else {
             qWarning("QPdfStream::writeCompressed: Error in compress()");
-            destLen = 0;
         }
-        delete [] dest;
-        len = destLen;
+        len = compressed.size();
     } else
 #endif
     {
